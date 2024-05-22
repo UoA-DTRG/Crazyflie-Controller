@@ -5,8 +5,8 @@ from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
 
 uris = {
-    'radio://0/80/2M/E7E7E7E7E7',
-    'radio://0/81/2M/E6E7E6E7E6',
+    'radio://0/80/2M/E7E7E7E7E7', #Atlas
+    'radio://0/81/2M/E6E7E6E7E6', #P-Body
 }
 
 def activate_led_bit_mask(scf):
@@ -31,7 +31,7 @@ def take_off(scf):
 def land(scf):
     commander= scf.cf.high_level_commander
 
-    commander.land(0.0, 5.0)
+    commander.land(0.0, 2.0)
     time.sleep(2)
 
     commander.stop()
