@@ -21,8 +21,29 @@ def light_check(scf):
     deactivate_led_bit_mask(scf)
     time.sleep(2)
 
+
+def take_off(scf):
+    commander= scf.cf.high_level_commander
+
+    commander.takeoff(1.0, 2.0)
+    time.sleep(3)
+
+def land(scf):
+    commander= scf.cf.high_level_commander
+
+    commander.land(0.0, 2.0)
+    time.sleep(2)
+
+    commander.stop()
+
+def hover_sequence(scf):
+    take_off(scf)
+    land(scf)
+
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
     with Swarm(uris, factory=factory) as swarm:
         swarm.parallel_safe(light_check)
+        swarm.reset_estimators()
+        swarm.parallel_safe(hover_sequence)
