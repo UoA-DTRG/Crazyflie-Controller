@@ -1,15 +1,15 @@
 import logging
 import time
 
-import cflib.crtp
-from cflib.crazyflie import Crazyflie
-from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
-from cflib.utils import uri_helper
+import cflib.crtp # type: ignore
+from cflib.crazyflie import Crazyflie# type: ignore
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie# type: ignore
+from cflib.utils import uri_helper# type: ignore
 
-from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie# type: ignore
 
-from cflib.crazyflie.log import LogConfig
-from cflib.crazyflie.syncLogger import SyncLogger
+from cflib.crazyflie.log import LogConfig# type: ignore
+from cflib.crazyflie.syncLogger import SyncLogger# type: ignore
 
 
 # URI to the Crazyflie to connect to

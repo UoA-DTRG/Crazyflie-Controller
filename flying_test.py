@@ -3,12 +3,12 @@ import sys
 import time
 from threading import Event
 
-import cflib.crtp
-from cflib.crazyflie import Crazyflie
-from cflib.crazyflie.log import LogConfig
-from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
-from cflib.positioning.motion_commander import MotionCommander
-from cflib.utils import uri_helper
+import cflib.crtp# type: ignore
+from cflib.crazyflie import Crazyflie# type: ignore
+from cflib.crazyflie.log import LogConfig# type: ignore
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie# type: ignore
+from cflib.positioning.motion_commander import MotionCommander# type: ignore
+from cflib.utils import uri_helper# type: ignore
 
 
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')

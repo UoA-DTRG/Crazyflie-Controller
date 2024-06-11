@@ -1,9 +1,9 @@
 import time
 
-import cflib.crtp
-from cflib.crazyflie.swarm import CachedCfFactory
-from cflib.crazyflie.swarm import Swarm
-from cflib.crazyflie import syncCrazyflie
+import cflib.crtp# type: ignore
+from cflib.crazyflie.swarm import CachedCfFactory# type: ignore
+from cflib.crazyflie.swarm import Swarm# type: ignore
+from cflib.crazyflie import syncCrazyflie# type: ignore
 
 uris = [
     'radio://0/80/2M/E7E7E7E7E7', #Atlas
