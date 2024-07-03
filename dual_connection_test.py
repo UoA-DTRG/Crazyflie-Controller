@@ -1,12 +1,12 @@
 import time
 
-import cflib.crtp
-from cflib.crazyflie.swarm import CachedCfFactory
-from cflib.crazyflie.swarm import Swarm
+import cflib.crtp# type: ignore
+from cflib.crazyflie.swarm import CachedCfFactory# type: ignore
+from cflib.crazyflie.swarm import Swarm# type: ignore
 
 uris = {
-    'radio://0/80/2M/E7E7E7E7E7',
-    'radio://0/81/2M/E6E7E6E7E6',
+    'radio://0/80/2M/E7E7E7E7E7', #Atlas
+    'radio://0/81/2M/E6E7E6E7E6', #P-Body
 }
 
 def activate_led_bit_mask(scf):
@@ -35,10 +35,23 @@ def land(scf):
     time.sleep(2)
 
     commander.stop()
+def run_square_sequence(scf):
+    box_size = 1
+    flight_time = 2
 
-def hover_sequence(scf):
-    take_off(scf)
-    land(scf)
+    commander= scf.cf.high_level_commander
+
+    commander.go_to(box_size, 0, 0, 0, flight_time, relative=True)
+    time.sleep(flight_time)
+
+    commander.go_to(0, box_size, 0, 0, flight_time, relative=True)
+    time.sleep(flight_time)
+
+    commander.go_to(-box_size, 0, 0, 0, flight_time, relative=True)
+    time.sleep(flight_time)
+
+    commander.go_to(0, -box_size, 0, 0, flight_time, relative=True)
+    time.sleep(flight_time)
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
@@ -46,4 +59,7 @@ if __name__ == '__main__':
     with Swarm(uris, factory=factory) as swarm:
         swarm.parallel_safe(light_check)
         swarm.reset_estimators()
-        swarm.parallel_safe(hover_sequence)
+        
+        swarm.parallel_safe(take_off)
+        swarm.parallel_safe(run_square_sequence)
+        swarm.parallel_safe(land)
