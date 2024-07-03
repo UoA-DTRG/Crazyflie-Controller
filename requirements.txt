@@ -6,3 +6,4 @@ libusb-package==1.0.26.2
 numpy==1.26.4
 pyusb==1.2.1
 scipy==1.13.0
+pygame==2.6.0
