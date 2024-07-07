@@ -58,7 +58,7 @@ class GLWidget(QOpenGLWidget):
         glVertex3f(0, 0, 1)
         glEnd()
 
-        # Draw a colored box
+        # Draw solid red cube
         glPushMatrix()
         glTranslatef(0, 0, 0.5)
         glRotatef(self.x_rot, 1.0, 0.0, 0.0)
@@ -67,10 +67,26 @@ class GLWidget(QOpenGLWidget):
         glColor3f(1.0, 0.0, 0.0)
         glutSolidCube(1.0)
         glPopMatrix()
+    
+        # Draw wireframe black cube (outline)
+        glPushMatrix()
+        glTranslatef(0, 0, 0.5)
+        glRotatef(self.x_rot, 1.0, 0.0, 0.0)
+        glRotatef(self.y_rot, 0.0, 1.0, 0.0)
+        glRotatef(self.z_rot, 0.0, 0.0, 1.0)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        glLineWidth(3.0)
+        glColor3f(0.0, 0.0, 0.0)
+        glutSolidCube(1.0)
+        glPopMatrix()
 
         self.x_rot += 1.0
         self.y_rot += 0.5
         self.z_rot += 0.25
+
+        # Ensure OpenGL state is reset to default after rendering
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)  # Reset polygon mode to fill
+        glLineWidth(1.0)  # Reset line width
 
     def resizeGL(self, width, height):
         glViewport(0, 0, width, height)
