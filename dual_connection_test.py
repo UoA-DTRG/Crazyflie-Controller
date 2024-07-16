@@ -26,7 +26,7 @@ def take_off(scf):
     commander= scf.cf.high_level_commander
 
     commander.takeoff(1.0, 2.0)
-    time.sleep(3)
+    time.sleep(5) 
 
 def land(scf):
     commander= scf.cf.high_level_commander
@@ -35,6 +35,16 @@ def land(scf):
     time.sleep(2)
 
     commander.stop()
+
+def forward_test(scf):
+    
+    commander= scf.cf.high_level_commander
+
+    commander.go_to(1, 0, 0, 0, 5, relative=True)
+    time.sleep(5)
+
+
+
 def run_square_sequence(scf):
     box_size = 1
     flight_time = 2
@@ -61,5 +71,6 @@ if __name__ == '__main__':
         swarm.reset_estimators()
         
         swarm.parallel_safe(take_off)
-        swarm.parallel_safe(run_square_sequence)
+        swarm.parallel_safe(forward_test)
+        # swarm.parallel_safe(run_square_sequence)
         swarm.parallel_safe(land)
