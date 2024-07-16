@@ -47,7 +47,7 @@ def forward_test(scf):
 
 def run_square_sequence(scf):
     box_size = 1
-    flight_time = 2
+    flight_time = 4
 
     commander= scf.cf.high_level_commander
 
@@ -71,6 +71,6 @@ if __name__ == '__main__':
         swarm.reset_estimators()
         
         swarm.parallel_safe(take_off)
-        swarm.parallel_safe(forward_test)
-        # swarm.parallel_safe(run_square_sequence)
+        # swarm.parallel_safe(forward_test)
+        swarm.parallel_safe(run_square_sequence)
         swarm.parallel_safe(land)
