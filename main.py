@@ -27,6 +27,8 @@ class GLWidget(QOpenGLWidget):
     def initializeGL(self):
         glClearColor(1.0, 1.0, 1.0, 1.0)
         glEnable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -82,6 +84,16 @@ class GLWidget(QOpenGLWidget):
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         glLineWidth(3.0)
         glColor3f(0.0, 0.0, 0.0)
+        glutSolidCube(1.0)
+        glPopMatrix()
+
+        # Draw transparent blue cube
+        glPushMatrix()
+        glTranslatef(self.x_pos + 1.5, self.y_pos, self.z_pos)
+        glRotatef(self.x_rot, 1.0, 0.0, 0.0)
+        glRotatef(self.y_rot, 0.0, 1.0, 0.0)
+        glRotatef(self.z_rot, 0.0, 0.0, 1.0)
+        glColor4f(0.0, 0.0, 1.0, 0.5)  # Set color to blue with 50% transparency
         glutSolidCube(1.0)
         glPopMatrix()
 
