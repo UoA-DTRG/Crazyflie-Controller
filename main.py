@@ -5,6 +5,7 @@ from PyQt5.QtCore import QTimer
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
+import pygame
 
 class GLWidget(QOpenGLWidget):
     def __init__(self, parent=None):
@@ -18,6 +19,10 @@ class GLWidget(QOpenGLWidget):
         self.x_rot = 0.0
         self.y_rot = 0.0
         self.z_rot = 0.0
+
+        self.x_pos = 0.0
+        self.y_pos = 0.0
+        self.z_pos = 0.5
 
     def initializeGL(self):
         glClearColor(1.0, 1.0, 1.0, 1.0)
@@ -60,7 +65,7 @@ class GLWidget(QOpenGLWidget):
 
         # Draw solid red cube
         glPushMatrix()
-        glTranslatef(0, 0, 0.5)
+        glTranslatef(self.x_pos, self.y_pos, self.z_pos)
         glRotatef(self.x_rot, 1.0, 0.0, 0.0)
         glRotatef(self.y_rot, 0.0, 1.0, 0.0)
         glRotatef(self.z_rot, 0.0, 0.0, 1.0)
@@ -70,7 +75,7 @@ class GLWidget(QOpenGLWidget):
     
         # Draw wireframe black cube (outline)
         glPushMatrix()
-        glTranslatef(0, 0, 0.5)
+        glTranslatef(self.x_pos, self.y_pos, self.z_pos)
         glRotatef(self.x_rot, 1.0, 0.0, 0.0)
         glRotatef(self.y_rot, 0.0, 1.0, 0.0)
         glRotatef(self.z_rot, 0.0, 0.0, 1.0)
@@ -79,10 +84,6 @@ class GLWidget(QOpenGLWidget):
         glColor3f(0.0, 0.0, 0.0)
         glutSolidCube(1.0)
         glPopMatrix()
-
-        self.x_rot += 1.0
-        self.y_rot += 0.5
-        self.z_rot += 0.25
 
         # Ensure OpenGL state is reset to default after rendering
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)  # Reset polygon mode to fill
@@ -96,6 +97,16 @@ class MainWindow(QWidget):
         super().__init__()
         self.initUI()
 
+        # Initialize Pygame for joystick input
+        pygame.init()
+        pygame.joystick.init()
+        self.controller = pygame.joystick.Joystick(0)
+        self.controller.init()
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_controller)
+        self.timer.start(16)  # Update approximately every 16 milliseconds (about 60 FPS)
+
     def initUI(self):
         layout = QVBoxLayout(self)
         self.setLayout(layout)
@@ -108,6 +119,39 @@ class MainWindow(QWidget):
 
         self.setWindowTitle('Collaborative Control Interface')
         self.setGeometry(50, 50, 800, 600)
+
+    def update_controller(self):
+        def apply_deadzone(value, threshold):
+            return value if abs(value) > threshold else 0
+
+        pygame.event.pump()
+        
+        # Deadzone threshold
+        DEADZONE = 0.1
+        
+        # Get axis values for sticks and apply deadzone
+        left_stick_x = apply_deadzone(self.controller.get_axis(0), DEADZONE)
+        left_stick_y = apply_deadzone(self.controller.get_axis(1), DEADZONE)
+        right_stick_x = apply_deadzone(self.controller.get_axis(3), DEADZONE)
+        right_stick_y = apply_deadzone(self.controller.get_axis(4), DEADZONE)
+        
+        # Get bumper button states
+        left_bumper = self.controller.get_button(4)  # Typically button index 4 for left bumper
+        right_bumper = self.controller.get_button(5) # Typically button index 5 for right bumper
+        
+        # Move object on xy plane
+        self.glWidget.x_pos += left_stick_x * 0.1
+        self.glWidget.z_pos += left_stick_y * 0.1
+        
+        # Move object up and down on y axis with bumpers
+        if left_bumper:
+            self.glWidget.y_pos -= 0.1
+        if right_bumper:
+            self.glWidget.y_pos += 0.1
+        
+        # Rotate object with right stick
+        self.glWidget.x_rot += right_stick_y *2.0
+        self.glWidget.z_rot -= right_stick_x *2.0
 
 def main():
     glutInit(sys.argv)  # Initialize GLUT before starting the QApplication
