@@ -7,6 +7,45 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import pygame
 
+class SceneObject:
+    def __init__(self, x, y, z, x_rot, y_rot, z_rot, color, size, transparency=1.0):
+        self.x_pos = x
+        self.y_pos = y
+        self.z_pos = z
+        self.x_rot = x_rot
+        self.y_rot = y_rot
+        self.z_rot = z_rot
+        self.color = color
+        self.size = size
+        self.transparency = transparency
+
+    def draw(self):
+        # Draw solid cube
+        glPushMatrix()
+        glTranslatef(self.x_pos, self.y_pos, self.z_pos)
+        glRotatef(self.x_rot, 1.0, 0.0, 0.0)
+        glRotatef(self.y_rot, 0.0, 1.0, 0.0)
+        glRotatef(self.z_rot, 0.0, 0.0, 1.0)
+        glColor4f(*self.color, self.transparency)
+        glutSolidCube(self.size)
+        glPopMatrix()
+
+        # Draw wireframe cube
+        glPushMatrix()
+        glTranslatef(self.x_pos, self.y_pos, self.z_pos)
+        glRotatef(self.x_rot, 1.0, 0.0, 0.0)
+        glRotatef(self.y_rot, 0.0, 1.0, 0.0)
+        glRotatef(self.z_rot, 0.0, 0.0, 1.0)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        glLineWidth(3.0)
+        glColor3f(0.0, 0.0, 0.0)
+        glutSolidCube(self.size)
+        glPopMatrix()
+
+        # Ensure OpenGL state is reset to default after rendering
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)  # Reset polygon mode to fill
+        glLineWidth(1.0)  # Reset line width
+
 class GLWidget(QOpenGLWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -16,13 +55,11 @@ class GLWidget(QOpenGLWidget):
         self.timer.timeout.connect(self.update)
         self.timer.start(16)  # Update approximately every 16 milliseconds (about 60 FPS)
 
-        self.x_rot = 0.0
-        self.y_rot = 0.0
-        self.z_rot = 0.0
+        self.objects = []
 
-        self.x_pos = 0.0
-        self.y_pos = 0.0
-        self.z_pos = 0.5
+        # Initialize some objects
+        self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 1.0))
+        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 1.0, 0.5))
 
     def initializeGL(self):
         glClearColor(1.0, 1.0, 1.0, 1.0)
@@ -41,7 +78,13 @@ class GLWidget(QOpenGLWidget):
         glLoadIdentity()
         gluLookAt(3.0, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
-        # Draw grid
+        self.draw_grid()
+        self.draw_axes()
+
+        for obj in self.objects:
+            obj.draw()
+
+    def draw_grid(self):
         glColor3f(0.68, 0.68, 0.68)
         glBegin(GL_LINES)
         for i in range(-10, 11):
@@ -51,7 +94,7 @@ class GLWidget(QOpenGLWidget):
             glVertex3f(10, 0, i)
         glEnd()
 
-        # Draw axes
+    def draw_axes(self):
         glLineWidth(2.0)
         glBegin(GL_LINES)
         glColor3f(1.0, 0.0, 0.0)
@@ -64,42 +107,6 @@ class GLWidget(QOpenGLWidget):
         glVertex3f(0, 0, 0)
         glVertex3f(0, 0, 1)
         glEnd()
-
-        # Draw solid red cube
-        glPushMatrix()
-        glTranslatef(self.x_pos, self.y_pos, self.z_pos)
-        glRotatef(self.x_rot, 1.0, 0.0, 0.0)
-        glRotatef(self.y_rot, 0.0, 1.0, 0.0)
-        glRotatef(self.z_rot, 0.0, 0.0, 1.0)
-        glColor3f(1.0, 0.0, 0.0)
-        glutSolidCube(1.0)
-        glPopMatrix()
-    
-        # Draw wireframe black cube (outline)
-        glPushMatrix()
-        glTranslatef(self.x_pos, self.y_pos, self.z_pos)
-        glRotatef(self.x_rot, 1.0, 0.0, 0.0)
-        glRotatef(self.y_rot, 0.0, 1.0, 0.0)
-        glRotatef(self.z_rot, 0.0, 0.0, 1.0)
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        glLineWidth(3.0)
-        glColor3f(0.0, 0.0, 0.0)
-        glutSolidCube(1.0)
-        glPopMatrix()
-
-        # Draw transparent blue cube
-        glPushMatrix()
-        glTranslatef(self.x_pos + 1.5, self.y_pos, self.z_pos)
-        glRotatef(self.x_rot, 1.0, 0.0, 0.0)
-        glRotatef(self.y_rot, 0.0, 1.0, 0.0)
-        glRotatef(self.z_rot, 0.0, 0.0, 1.0)
-        glColor4f(0.0, 0.0, 1.0, 0.5)  # Set color to blue with 50% transparency
-        glutSolidCube(1.0)
-        glPopMatrix()
-
-        # Ensure OpenGL state is reset to default after rendering
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)  # Reset polygon mode to fill
-        glLineWidth(1.0)  # Reset line width
 
     def resizeGL(self, width, height):
         glViewport(0, 0, width, height)
@@ -151,19 +158,19 @@ class MainWindow(QWidget):
         left_bumper = self.controller.get_button(4)  # Typically button index 4 for left bumper
         right_bumper = self.controller.get_button(5) # Typically button index 5 for right bumper
         
-        # Move object on xy plane
-        self.glWidget.x_pos += left_stick_x * 0.1
-        self.glWidget.z_pos += left_stick_y * 0.1
+        # Move the first object on xy plane
+        self.glWidget.objects[0].x_pos += left_stick_x * 0.1
+        self.glWidget.objects[0].z_pos += left_stick_y * 0.1
         
-        # Move object up and down on y axis with bumpers
+        # Move the first object up and down on y axis with bumpers
         if left_bumper:
-            self.glWidget.y_pos -= 0.1
+            self.glWidget.objects[0].y_pos -= 0.1
         if right_bumper:
-            self.glWidget.y_pos += 0.1
+            self.glWidget.objects[0].y_pos += 0.1
         
-        # Rotate object with right stick
-        self.glWidget.x_rot += right_stick_y *2.0
-        self.glWidget.z_rot -= right_stick_x *2.0
+        # Rotate the first object with right stick
+        self.glWidget.objects[0].x_rot += right_stick_y * 2.0
+        self.glWidget.objects[0].z_rot -= right_stick_x * 2.0
 
 def main():
     glutInit(sys.argv)  # Initialize GLUT before starting the QApplication
