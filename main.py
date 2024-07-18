@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QOpenGLWidget
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -57,9 +57,17 @@ class GLWidget(QOpenGLWidget):
 
         self.objects = []
 
-        # Initialize some objects
-        self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 1.0))
-        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 1.0, 0.5))
+        # Initialize some objects with smaller size
+        self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 0.5))  # Red cube
+        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 0.5, 0.5))  # Blue transparent cube
+
+        # Camera parameters
+        self.camera_distance = 10.0
+        self.camera_angle_x = 30.0
+        self.camera_angle_y = 45.0
+        self.mouse_last_x = 0
+        self.mouse_last_y = 0
+        self.mouse_left_button_down = False
 
     def initializeGL(self):
         glClearColor(1.0, 1.0, 1.0, 1.0)
@@ -76,7 +84,13 @@ class GLWidget(QOpenGLWidget):
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        gluLookAt(3.0, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+        gluLookAt(
+            self.camera_distance * np.sin(np.radians(self.camera_angle_y)) * np.cos(np.radians(self.camera_angle_x)),
+            self.camera_distance * np.sin(np.radians(self.camera_angle_x)),
+            self.camera_distance * np.cos(np.radians(self.camera_angle_y)) * np.cos(np.radians(self.camera_angle_x)),
+            0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0
+        )
 
         self.draw_grid()
         self.draw_axes()
@@ -110,6 +124,27 @@ class GLWidget(QOpenGLWidget):
 
     def resizeGL(self, width, height):
         glViewport(0, 0, width, height)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.mouse_left_button_down = True
+            self.mouse_last_x = event.x()
+            self.mouse_last_y = event.y()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.mouse_left_button_down = False
+
+    def mouseMoveEvent(self, event):
+        if self.mouse_left_button_down:
+            dx = event.x() - self.mouse_last_x
+            dy = event.y() - self.mouse_last_y
+            self.camera_angle_y += dx * 0.5
+            self.camera_angle_x -= dy * 0.5
+            self.camera_angle_x = max(-90, min(90, self.camera_angle_x))
+            self.mouse_last_x = event.x()
+            self.mouse_last_y = event.y()
+            self.update()
 
 class MainWindow(QWidget):
     def __init__(self):
