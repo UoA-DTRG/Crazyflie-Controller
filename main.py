@@ -8,7 +8,7 @@ from OpenGL.GLU import *
 import pygame
 
 class SceneObject:
-    def __init__(self, x, y, z, x_rot, y_rot, z_rot, color, size, transparency=1.0):
+    def __init__(self, x, y, z, x_rot, y_rot, z_rot, color, size, length=0.5, transparency=1.0):
         self.x_pos = x
         self.y_pos = y
         self.z_pos = z
@@ -17,29 +17,32 @@ class SceneObject:
         self.z_rot = z_rot
         self.color = color
         self.size = size
+        self.length = length
         self.transparency = transparency
 
     def draw(self):
-        # Draw solid cube
+        # Draw solid rectangle
         glPushMatrix()
         glTranslatef(self.x_pos, self.y_pos, self.z_pos)
         glRotatef(self.x_rot, 1.0, 0.0, 0.0)
         glRotatef(self.y_rot, 0.0, 1.0, 0.0)
         glRotatef(self.z_rot, 0.0, 0.0, 1.0)
+        glScalef(self.length, self.size, self.size)
         glColor4f(*self.color, self.transparency)
-        glutSolidCube(self.size)
+        glutSolidCube(1.0)
         glPopMatrix()
 
-        # Draw wireframe cube
+        # Draw wireframe rectangle
         glPushMatrix()
         glTranslatef(self.x_pos, self.y_pos, self.z_pos)
         glRotatef(self.x_rot, 1.0, 0.0, 0.0)
         glRotatef(self.y_rot, 0.0, 1.0, 0.0)
         glRotatef(self.z_rot, 0.0, 0.0, 1.0)
+        glScalef(self.length, self.size, self.size)
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         glLineWidth(3.0)
         glColor3f(0.0, 0.0, 0.0)
-        glutSolidCube(self.size)
+        glutSolidCube(1.0)
         glPopMatrix()
 
         # Ensure OpenGL state is reset to default after rendering
@@ -57,9 +60,10 @@ class GLWidget(QOpenGLWidget):
 
         self.objects = []
 
-        # Initialize some objects with smaller size
-        self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 0.5))  # Red cube
-        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 0.5, 0.5))  # Blue transparent cube
+        # Initialize some objects
+        self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 0.5))
+        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 0.5, transparency=0.5))
+        self.objects.append(SceneObject(3.0, 0.0, 1.5, 0.0, 0.0, 0.0, (0.0, 1.0, 0.0), 0.25, length=3.0))  # Green rectangle
 
         # Camera parameters
         self.camera_distance = 10.0
