@@ -97,6 +97,11 @@ class GLWidget(QOpenGLWidget):
 
         for obj in self.objects:
             obj.draw()
+        
+        # Draw dashed line between the first and second objects
+        start = np.array([self.objects[0].x_pos, self.objects[0].y_pos, self.objects[0].z_pos])
+        end = np.array([self.objects[1].x_pos, self.objects[1].y_pos, self.objects[1].z_pos])
+        self.draw_dashed_line(start, end, (0.855, 0.647, 0.125))  # Yellow color
 
     def draw_grid(self):
         glColor3f(0.68, 0.68, 0.68)
@@ -145,6 +150,23 @@ class GLWidget(QOpenGLWidget):
             self.mouse_last_x = event.x()
             self.mouse_last_y = event.y()
             self.update()
+    
+    def draw_dashed_line(self, start, end, color, dash_length=0.1):
+        glColor3f(*color)
+        glLineWidth(4.0)  # Set line width to 3.0 for thicker lines
+        glBegin(GL_LINES)   
+        length = np.linalg.norm(np.array(end) - np.array(start))
+        num_dashes = int(length / dash_length)
+        for i in range(num_dashes):
+            t1 = i / num_dashes
+            t2 = (i + 0.5) / num_dashes
+            point1 = start * (1 - t1) + np.array(end) * t1
+            point2 = start * (1 - t2) + np.array(end) * t2
+            glVertex3fv(point1)
+            glVertex3fv(point2)
+        glEnd()
+        glLineWidth(1.0)  # Set line width to 3.0 for thicker lines
+
 
 class MainWindow(QWidget):
     def __init__(self):
