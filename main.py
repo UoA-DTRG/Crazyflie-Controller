@@ -20,6 +20,10 @@ class SceneObject:
         self.length = length
         self.transparency = transparency
 
+        self.x_vel = 0.0  # Adding velocity attributes
+        self.y_vel = 0.0
+        self.z_vel = 0.0
+
     def draw(self):
         # Draw solid rectangle
         glPushMatrix()
@@ -107,6 +111,15 @@ class GLWidget(QOpenGLWidget):
         end = np.array([self.objects[1].x_pos, self.objects[1].y_pos, self.objects[1].z_pos])
         self.draw_dashed_line(start, end, (0.855, 0.647, 0.125))  # Yellow color
 
+
+        # Draw a red arrow in the direction of the first object's movement
+        arrow_start = np.array([self.objects[0].x_pos, self.objects[0].y_pos, self.objects[0].z_pos])
+        arrow_end = arrow_start + np.array([self.objects[0].x_vel, self.objects[0].y_vel, self.objects[0].z_vel]) * 10  # Scale the velocity for visibility
+        self.draw_arrow(arrow_start, arrow_end, (1.0, 0.0, 0.0))  # Red color arrow
+
+
+
+
     def draw_grid(self):
         glColor3f(0.68, 0.68, 0.68)
         glBegin(GL_LINES)
@@ -171,6 +184,34 @@ class GLWidget(QOpenGLWidget):
         glEnd()
         glLineWidth(1.0)  # Set line width to 3.0 for thicker lines
 
+    def draw_arrow(self, start, end, color, arrow_head_length=0.2, arrow_head_width=0.1):
+        glColor3f(*color)
+        glLineWidth(3.0)  # Set line width for the arrow
+
+        # Draw the arrow shaft
+        glBegin(GL_LINES)
+        glVertex3fv(start)
+        glVertex3fv(end)
+        glEnd()
+
+        # Calculate the direction of the arrow
+        direction = np.array(end) - np.array(start)
+        direction = direction / np.linalg.norm(direction)
+
+        # Calculate points for the arrow head
+        ortho_direction = np.array([-direction[1], direction[0], 0])  # Perpendicular in 2D
+        arrow_left = np.array(end) - arrow_head_length * direction + arrow_head_width * ortho_direction
+        arrow_right = np.array(end) - arrow_head_length * direction - arrow_head_width * ortho_direction
+
+        # Draw the arrow head
+        glBegin(GL_TRIANGLES)
+        glVertex3fv(end)
+        glVertex3fv(arrow_left)
+        glVertex3fv(arrow_right)
+        glEnd()
+
+        glLineWidth(1.0)  # Reset line width
+
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -206,30 +247,26 @@ class MainWindow(QWidget):
 
         pygame.event.pump()
         
-        # Deadzone threshold
         DEADZONE = 0.1
         
-        # Get axis values for sticks and apply deadzone
         left_stick_x = apply_deadzone(self.controller.get_axis(0), DEADZONE)
         left_stick_y = apply_deadzone(self.controller.get_axis(1), DEADZONE)
         right_stick_x = apply_deadzone(self.controller.get_axis(3), DEADZONE)
         right_stick_y = apply_deadzone(self.controller.get_axis(4), DEADZONE)
         
-        # Get bumper button states
-        left_bumper = self.controller.get_button(4)  # Typically button index 4 for left bumper
-        right_bumper = self.controller.get_button(5) # Typically button index 5 for right bumper
+        left_bumper = self.controller.get_button(4)
+        right_bumper = self.controller.get_button(5)
         
-        # Move the first object on xy plane
-        self.glWidget.objects[0].x_pos += left_stick_x * 0.1
-        self.glWidget.objects[0].z_pos += left_stick_y * 0.1
+        # Update velocities
+        self.glWidget.objects[0].x_vel = left_stick_x * 0.1
+        self.glWidget.objects[0].z_vel = left_stick_y * 0.1
+        self.glWidget.objects[0].y_vel = (right_bumper - left_bumper) * 0.1
         
-        # Move the first object up and down on y axis with bumpers
-        if left_bumper:
-            self.glWidget.objects[0].y_pos -= 0.1
-        if right_bumper:
-            self.glWidget.objects[0].y_pos += 0.1
+        # Update positions based on velocities
+        self.glWidget.objects[0].x_pos += self.glWidget.objects[0].x_vel
+        self.glWidget.objects[0].z_pos += self.glWidget.objects[0].z_vel
+        self.glWidget.objects[0].y_pos += self.glWidget.objects[0].y_vel
         
-        # Rotate the first object with right stick
         self.glWidget.objects[0].x_rot += right_stick_y * 2.0
         self.glWidget.objects[0].z_rot -= right_stick_x * 2.0
 
