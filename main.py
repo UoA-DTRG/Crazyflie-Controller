@@ -117,6 +117,16 @@ class GLWidget(QOpenGLWidget):
         arrow_end = arrow_start + np.array([self.objects[0].x_vel, self.objects[0].y_vel, self.objects[0].z_vel]) * 10  # Scale the velocity for visibility
         self.draw_arrow(arrow_start, arrow_end, (1.0, 0.0, 0.0))  # Red color arrow
 
+        # Draw two arrows pointing up at each end of the green rectangle
+        green_rect = self.objects[2]
+        half_length = green_rect.length / 2 - 0.1 # Offset the arrows slightly from the edges of the rectangle
+        start_arrow_1 = np.array([green_rect.x_pos - half_length, green_rect.y_pos, green_rect.z_pos])
+        end_arrow_1 = start_arrow_1 + np.array([0.0, 0.5, 0.0])
+        self.draw_arrow(start_arrow_1, end_arrow_1, (0.0, 0.0, 1.0))  # Blue FORCE ARROW 
+
+        start_arrow_2 = np.array([green_rect.x_pos + half_length, green_rect.y_pos, green_rect.z_pos])
+        end_arrow_2 = start_arrow_2 + np.array([0.0, 0.5, 0.0])
+        self.draw_arrow(start_arrow_2, end_arrow_2, (0.0, 0.0, 1.0)) 
 
 
 
