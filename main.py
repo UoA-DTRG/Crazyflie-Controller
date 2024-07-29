@@ -114,10 +114,12 @@ class GLWidget(QOpenGLWidget):
         self.draw_dashed_line(start, end, (0.855, 0.647, 0.125))  # Yellow color
 
 
-        # Draw a red arrow in the direction of the first object's movement
-        arrow_start = np.array([self.objects[0].x_pos, self.objects[0].y_pos, self.objects[0].z_pos])
-        arrow_end = arrow_start + np.array([self.objects[0].x_vel, self.objects[0].y_vel, self.objects[0].z_vel]) * 10  # Scale the velocity for visibility
-        self.draw_arrow(arrow_start, arrow_end, (1.0, 0.0, 0.0))  # Red color arrow
+        # Draw arrows in the direction of each moving object's velocity
+        for obj in self.objects:
+            if obj.x_vel != 0.0 or obj.y_vel != 0.0 or obj.z_vel != 0.0:
+                arrow_start = np.array([obj.x_pos, obj.y_pos, obj.z_pos])
+                arrow_end = arrow_start + np.array([obj.x_vel, obj.y_vel, obj.z_vel]) * 10  # Scale the velocity for visibility
+                self.draw_arrow(arrow_start, arrow_end, (1.0, 0.0, 0.0))  # Red color arrow
 
         # Draw two arrows pointing up at each end of the green rectangle
         green_rect = self.objects[2]
