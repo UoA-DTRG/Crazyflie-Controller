@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from PyQt5.QtWidgets import QDockWidget, QVBoxLayout, QPushButton, QMainWindow, QWidget,QScrollArea, QOpenGLWidget, QApplication, QFormLayout,QComboBox,QGroupBox,QLineEdit,QLabel
+from PyQt5.QtWidgets import QDockWidget,QSplitter, QVBoxLayout, QPushButton, QMainWindow, QWidget,QScrollArea, QOpenGLWidget, QApplication, QFormLayout,QComboBox,QGroupBox,QLineEdit,QLabel
 from PyQt5.QtCore import QTimer, Qt
 from OpenGL.GL import *
 from OpenGL.GLUT import *
@@ -8,7 +8,7 @@ from OpenGL.GLU import *
 import pygame
 
 class SceneObject:
-    def __init__(self, x, y, z, x_rot, y_rot, z_rot, color, size, length=0.5, transparency=1.0):
+    def __init__(self, x, y, z, x_rot, y_rot, z_rot, color, size, name, length=0.5, transparency=1.0, tracked=False):
         self.x_pos = x
         self.y_pos = y
         self.z_pos = z
@@ -19,6 +19,8 @@ class SceneObject:
         self.size = size
         self.length = length
         self.transparency = transparency
+        self.tracked = tracked
+        self.name = name
 
         self.x_vel = 0.0  # Adding velocity attributes
         self.y_vel = 0.0
@@ -65,9 +67,9 @@ class GLWidget(QOpenGLWidget):
         self.objects = []
 
         # Initialize some objects
-        self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 0.5))
-        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 0.5, transparency=0.5))
-        self.objects.append(SceneObject(3.0, 0.0, 1.5, 0.0, 0.0, 0.0, (0.0, 1.0, 0.0), 0.25, length=3.0))  # Green rectangle
+        self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 0.5, name="Red Cube"))
+        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 0.5, name="Blue Cube" ,transparency=0.5, tracked=True))
+        self.objects.append(SceneObject(3.0, 0.0, 1.5, 0.0, 0.0, 0.0, (0.0, 1.0, 0.0), 0.25, name="Green Cube",length=3.0))  # Green rectangle
 
         # Camera parameters
         self.camera_distance = 10.0
@@ -220,6 +222,7 @@ class GLWidget(QOpenGLWidget):
 
         glLineWidth(1.0)  # Reset line width
 
+
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -231,10 +234,12 @@ class MainWindow(QMainWindow):
         self.controller = pygame.joystick.Joystick(0)
         self.controller.init()
 
+        self.controller_object = -1 # Index of the object to control with the controller -1 is none
+
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_controller)
         self.timer.start(16)  # Update approximately every 16 milliseconds (about 60 FPS)
-
+    
     def initUI(self):
         self.setWindowTitle('Collaborative Control Interface')
         self.setGeometry(50, 50, 800, 600)
@@ -250,13 +255,41 @@ class MainWindow(QMainWindow):
         layout.addWidget(button)
 
         # Create a dock widget
-        dock_widget = QDockWidget("Objects", self)
+        dock_widget = QDockWidget(self)
         dock_widget.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
+        dock_widget.setMinimumWidth(300)  # Set a minimum width for the dock widget
+        dock_widget.setMinimumHeight(300)  # Set a minimum height for the dock widget
 
+        # Remove the close button from the dock widget
+        dock_widget.setFeatures(QDockWidget.NoDockWidgetFeatures)
+
+        # Create a custom title bar with minimize button
+        title_bar = QWidget()
+        title_layout = QVBoxLayout(title_bar)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+
+        title_label = QLabel("Objects")
+        title_layout.addWidget(title_label)
+
+        dock_widget.setTitleBarWidget(title_bar)
+
+        # Create a splitter
+        self.splitter = QSplitter(Qt.Vertical)
+
+        # Create a combo box
+        self.combo_box = QComboBox()
+        label = QLabel("Controller Object")
+        controller_layout = QVBoxLayout()
+        controller_layout.addWidget(label)
+        controller_layout.addWidget(self.combo_box)
+        controller_group_box = QGroupBox("Controller")
+        controller_group_box.setLayout(controller_layout)
+        layout.addWidget(controller_group_box)
+        self.splitter.addWidget(controller_group_box)
+        
         # Create a scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)  # Make the scroll area resizeable
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)  # Make the scroll area resizable
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -267,20 +300,21 @@ class MainWindow(QMainWindow):
 
         for i, obj in enumerate(self.glWidget.objects):
             group_box = QGroupBox(f"Object {i}")
-            group_box.setCheckable(True)  # Allow collapsing
-            group_box.setChecked(True)  # Start expanded
             form_layout = QFormLayout()
+            if not obj.tracked:
+                self.combo_box.addItem(f"{obj.name}")
+                self.combo_box.setItemData(self.combo_box.count() - 1, i)
 
-            x_pos_input = QLineEdit(str(obj.x_pos))
-            y_pos_input = QLineEdit(str(obj.y_pos))
-            z_pos_input = QLineEdit(str(obj.z_pos))
-            x_rot_input = QLineEdit(str(obj.x_rot))
-            y_rot_input = QLineEdit(str(obj.y_rot))
-            z_rot_input = QLineEdit(str(obj.z_rot))
-            color_input = QLineEdit(str(obj.color))
-            size_input = QLineEdit(str(obj.size))
-            length_input = QLineEdit(str(obj.length))
-            transparency_input = QLineEdit(str(obj.transparency))
+            x_pos_input = QLineEdit(f"{obj.x_pos:.4f}")
+            y_pos_input = QLineEdit(f"{obj.y_pos:.4f}")
+            z_pos_input = QLineEdit(f"{obj.z_pos:.4f}")
+            x_rot_input = QLineEdit(f"{obj.x_rot:.4f}")
+            y_rot_input = QLineEdit(f"{obj.y_rot:.4f}")
+            z_rot_input = QLineEdit(f"{obj.z_rot:.4f}")
+            color_input = QLineEdit(f"({obj.color[0]:.4f}, {obj.color[1]:.4f}, {obj.color[2]:.4f})")
+            size_input = QLineEdit(f"{obj.size:.4f}")
+            length_input = QLineEdit(f"{obj.length:.4f}")
+            transparency_input = QLineEdit(f"{obj.transparency:.4f}")
 
             # Connect input fields to update method
             x_pos_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'x_pos', text))
@@ -322,8 +356,15 @@ class MainWindow(QMainWindow):
                 'transparency': transparency_input
             })
 
-        scroll_area.setWidget(self.scroll_content)
-        dock_widget.setWidget(scroll_area)
+        self.scroll_content.setLayout(self.scroll_layout)
+        self.scroll_area.setWidget(self.scroll_content)
+
+        self.splitter.addWidget(self.scroll_area)
+
+        dock_widget.setWidget(self.splitter)
+
+        self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
+
 
     def update_controller(self):
         def apply_deadzone(value, threshold):
@@ -341,18 +382,22 @@ class MainWindow(QMainWindow):
         left_bumper = self.controller.get_button(4)
         right_bumper = self.controller.get_button(5)
         
-        # Update velocities
-        self.glWidget.objects[0].x_vel = left_stick_x * 0.1
-        self.glWidget.objects[0].z_vel = left_stick_y * 0.1
-        self.glWidget.objects[0].y_vel = (right_bumper - left_bumper) * 0.1
-        
-        # Update positions based on velocities
-        self.glWidget.objects[0].x_pos += self.glWidget.objects[0].x_vel
-        self.glWidget.objects[0].z_pos += self.glWidget.objects[0].z_vel
-        self.glWidget.objects[0].y_pos += self.glWidget.objects[0].y_vel
-        
-        self.glWidget.objects[0].x_rot += right_stick_y * 2.0
-        self.glWidget.objects[0].z_rot -= right_stick_x * 2.0
+        self.controller_object = self.combo_box.itemData(self.combo_box.currentIndex())
+
+
+        if self.controller_object != -1:
+            # Update velocities
+            self.glWidget.objects[self.controller_object].x_vel = left_stick_x * 0.1
+            self.glWidget.objects[self.controller_object].z_vel = left_stick_y * 0.1
+            self.glWidget.objects[self.controller_object].y_vel = (right_bumper - left_bumper) * 0.1
+            
+            # Update positions based on velocities
+            self.glWidget.objects[self.controller_object].x_pos += self.glWidget.objects[self.controller_object].x_vel
+            self.glWidget.objects[self.controller_object].z_pos += self.glWidget.objects[self.controller_object].z_vel
+            self.glWidget.objects[self.controller_object].y_pos += self.glWidget.objects[self.controller_object].y_vel
+            
+            self.glWidget.objects[self.controller_object].x_rot += right_stick_y * 2.0
+            self.glWidget.objects[self.controller_object].z_rot -= right_stick_x * 2.0
 
         # Refresh the UI fields
         self.refreshUI()
