@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QOpenGLWidget
+from PyQt5.QtWidgets import QDockWidget, QVBoxLayout, QPushButton, QMainWindow, QWidget,QScrollArea, QOpenGLWidget, QApplication, QFormLayout,QComboBox,QGroupBox,QLineEdit,QLabel
 from PyQt5.QtCore import QTimer, Qt
 from OpenGL.GL import *
 from OpenGL.GLUT import *
@@ -119,7 +119,7 @@ class GLWidget(QOpenGLWidget):
 
         # Draw two arrows pointing up at each end of the green rectangle
         green_rect = self.objects[2]
-        half_length = green_rect.length / 2 - 0.1 # Offset the arrows slightly from the edges of the rectangle
+        half_length = (green_rect.length / 2) - 0.1 # Offset the arrows slightly from the edges of the rectangle
         start_arrow_1 = np.array([green_rect.x_pos - half_length, green_rect.y_pos, green_rect.z_pos])
         end_arrow_1 = start_arrow_1 + np.array([0.0, 0.5, 0.0])
         self.draw_arrow(start_arrow_1, end_arrow_1, (0.0, 0.0, 1.0))  # Blue FORCE ARROW 
@@ -127,8 +127,6 @@ class GLWidget(QOpenGLWidget):
         start_arrow_2 = np.array([green_rect.x_pos + half_length, green_rect.y_pos, green_rect.z_pos])
         end_arrow_2 = start_arrow_2 + np.array([0.0, 0.5, 0.0])
         self.draw_arrow(start_arrow_2, end_arrow_2, (0.0, 0.0, 1.0)) 
-
-
 
     def draw_grid(self):
         glColor3f(0.68, 0.68, 0.68)
@@ -222,10 +220,9 @@ class GLWidget(QOpenGLWidget):
 
         glLineWidth(1.0)  # Reset line width
 
-
-class MainWindow(QWidget):
-    def __init__(self):
-        super().__init__()
+class MainWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super(MainWindow, self).__init__(parent)
         self.initUI()
 
         # Initialize Pygame for joystick input
@@ -239,8 +236,12 @@ class MainWindow(QWidget):
         self.timer.start(16)  # Update approximately every 16 milliseconds (about 60 FPS)
 
     def initUI(self):
-        layout = QVBoxLayout(self)
-        self.setLayout(layout)
+        self.setWindowTitle('Collaborative Control Interface')
+        self.setGeometry(50, 50, 800, 600)
+
+        central_widget = QWidget(self)
+        layout = QVBoxLayout(central_widget)
+        self.setCentralWidget(central_widget)
 
         self.glWidget = GLWidget(self)
         layout.addWidget(self.glWidget)
@@ -248,8 +249,81 @@ class MainWindow(QWidget):
         button = QPushButton('Connect to Drone', self)
         layout.addWidget(button)
 
-        self.setWindowTitle('Collaborative Control Interface')
-        self.setGeometry(50, 50, 800, 600)
+        # Create a dock widget
+        dock_widget = QDockWidget("Objects", self)
+        dock_widget.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
+
+        # Create a scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)  # Make the scroll area resizeable
+
+        # Create a widget for the scroll area content
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+
+        # Create a group box for each object with input fields
+        self.input_fields = []  # Store references to input fields for updating
+
+        for i, obj in enumerate(self.glWidget.objects):
+            group_box = QGroupBox(f"Object {i}")
+            group_box.setCheckable(True)  # Allow collapsing
+            group_box.setChecked(True)  # Start expanded
+            form_layout = QFormLayout()
+
+            x_pos_input = QLineEdit(str(obj.x_pos))
+            y_pos_input = QLineEdit(str(obj.y_pos))
+            z_pos_input = QLineEdit(str(obj.z_pos))
+            x_rot_input = QLineEdit(str(obj.x_rot))
+            y_rot_input = QLineEdit(str(obj.y_rot))
+            z_rot_input = QLineEdit(str(obj.z_rot))
+            color_input = QLineEdit(str(obj.color))
+            size_input = QLineEdit(str(obj.size))
+            length_input = QLineEdit(str(obj.length))
+            transparency_input = QLineEdit(str(obj.transparency))
+
+            # Connect input fields to update method
+            x_pos_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'x_pos', text))
+            y_pos_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'y_pos', text))
+            z_pos_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'z_pos', text))
+            x_rot_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'x_rot', text))
+            y_rot_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'y_rot', text))
+            z_rot_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'z_rot', text))
+            color_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'color', text))
+            size_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'size', text))
+            length_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'length', text))
+            transparency_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'transparency', text))
+
+            form_layout.addRow(QLabel("X Position"), x_pos_input)
+            form_layout.addRow(QLabel("Y Position"), y_pos_input)
+            form_layout.addRow(QLabel("Z Position"), z_pos_input)
+            form_layout.addRow(QLabel("X Rotation"), x_rot_input)
+            form_layout.addRow(QLabel("Y Rotation"), y_rot_input)
+            form_layout.addRow(QLabel("Z Rotation"), z_rot_input)
+            form_layout.addRow(QLabel("Color"), color_input)
+            form_layout.addRow(QLabel("Size"), size_input)
+            form_layout.addRow(QLabel("Length"), length_input)
+            form_layout.addRow(QLabel("Transparency"), transparency_input)
+
+            group_box.setLayout(form_layout)
+            self.scroll_layout.addWidget(group_box)
+
+            # Store references to input fields
+            self.input_fields.append({
+                'x_pos': x_pos_input,
+                'y_pos': y_pos_input,
+                'z_pos': z_pos_input,
+                'x_rot': x_rot_input,
+                'y_rot': y_rot_input,
+                'z_rot': z_rot_input,
+                'color': color_input,
+                'size': size_input,
+                'length': length_input,
+                'transparency': transparency_input
+            })
+
+        scroll_area.setWidget(self.scroll_content)
+        dock_widget.setWidget(scroll_area)
 
     def update_controller(self):
         def apply_deadzone(value, threshold):
@@ -279,6 +353,40 @@ class MainWindow(QWidget):
         
         self.glWidget.objects[0].x_rot += right_stick_y * 2.0
         self.glWidget.objects[0].z_rot -= right_stick_x * 2.0
+
+        # Refresh the UI fields
+        self.refreshUI()
+
+    def refreshUI(self):
+        for i, obj in enumerate(self.glWidget.objects):
+            fields = self.input_fields[i]
+            fields['x_pos'].setText(f"{obj.x_pos:.4f}")
+            fields['y_pos'].setText(f"{obj.y_pos:.4f}")
+            fields['z_pos'].setText(f"{obj.z_pos:.4f}")
+            fields['x_rot'].setText(f"{obj.x_rot:.4f}")
+            fields['y_rot'].setText(f"{obj.y_rot:.4f}")
+            fields['z_rot'].setText(f"{obj.z_rot:.4f}")
+            fields['color'].setText(f"({obj.color[0]:.4f}, {obj.color[1]:.4f}, {obj.color[2]:.4f})")
+            fields['size'].setText(f"{obj.size:.4f}")
+            fields['length'].setText(f"{obj.length:.4f}")
+            fields['transparency'].setText(f"{obj.transparency:.4f}")
+
+    def updateObject(self, index, attribute, value):
+        try:
+            # Convert value to appropriate type
+            if attribute in ['x_pos', 'y_pos', 'z_pos', 'x_rot', 'y_rot', 'z_rot', 'size', 'length']:
+                value = float(value)
+            elif attribute == 'transparency':
+                value = float(value)
+            elif attribute == 'color':
+                value = tuple(map(float, value.strip('()').split(',')))
+            
+            # Update the SceneObject
+            obj = self.glWidget.objects[index]
+            setattr(obj, attribute, value)
+        except ValueError:
+            # Handle invalid input (e.g., non-numeric values)
+            pass
 
 def main():
     glutInit(sys.argv)  # Initialize GLUT before starting the QApplication
