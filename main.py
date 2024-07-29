@@ -250,22 +250,31 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         self.setCentralWidget(central_widget)
 
+        self.setupGLWidget(layout)
+        self.setupConnectButton(layout)
+        self.setupDockWidget()
+
+    def setupGLWidget(self, layout):
         self.glWidget = GLWidget(self)
         layout.addWidget(self.glWidget)
 
+    def setupConnectButton(self, layout):
         button = QPushButton('Connect to Drone', self)
         layout.addWidget(button)
 
-        # Create a dock widget
+    def setupDockWidget(self):
         dock_widget = QDockWidget(self)
         dock_widget.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        dock_widget.setMinimumWidth(300)  # Set a minimum width for the dock widget
-        dock_widget.setMinimumHeight(300)  # Set a minimum height for the dock widget
-
-        # Remove the close button from the dock widget
+        dock_widget.setMinimumWidth(300)
+        dock_widget.setMinimumHeight(300)
         dock_widget.setFeatures(QDockWidget.NoDockWidgetFeatures)
 
-        # Create a custom title bar with minimize button
+        self.setupTitleBar(dock_widget)
+        self.setupSplitter(dock_widget)
+
+        self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
+
+    def setupTitleBar(self, dock_widget):
         title_bar = QWidget()
         title_layout = QVBoxLayout(title_bar)
         title_layout.setContentsMargins(0, 0, 0, 0)
@@ -275,10 +284,15 @@ class MainWindow(QMainWindow):
 
         dock_widget.setTitleBarWidget(title_bar)
 
-        # Create a splitter
+    def setupSplitter(self, dock_widget):
         self.splitter = QSplitter(Qt.Vertical)
+        self.setupControllerGroupBox()
+        self.setupRadioAddressGroupBox()
+        self.setupScrollArea()
 
-        # Create a combo box
+        dock_widget.setWidget(self.splitter)
+
+    def setupControllerGroupBox(self):
         self.combo_box = QComboBox()
         label = QLabel("Controller Object")
         controller_layout = QVBoxLayout()
@@ -287,9 +301,8 @@ class MainWindow(QMainWindow):
         controller_group_box = QGroupBox("Controller")
         controller_group_box.setLayout(controller_layout)
         self.splitter.addWidget(controller_group_box)
-        
 
-        # Add the new Radio Address section
+    def setupRadioAddressGroupBox(self):
         radio_address_group_box = QGroupBox("Radio Address")
         radio_address_layout = QFormLayout()
         atlas_input = QLineEdit()
@@ -299,16 +312,20 @@ class MainWindow(QMainWindow):
         radio_address_group_box.setLayout(radio_address_layout)
         self.splitter.addWidget(radio_address_group_box)
 
-        # Create a scroll area
+    def setupScrollArea(self):
         self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)  # Make the scroll area resizable
-
-        # Create a widget for the scroll area content
+        self.scroll_area.setWidgetResizable(True)
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
 
-        # Create a group box for each object with input fields
-        self.input_fields = []  # Store references to input fields for updating
+        self.setupObjectGroupBoxes()
+
+        self.scroll_content.setLayout(self.scroll_layout)
+        self.scroll_area.setWidget(self.scroll_content)
+        self.splitter.addWidget(self.scroll_area)
+
+    def setupObjectGroupBoxes(self):
+        self.input_fields = []
 
         for i, obj in enumerate(self.glWidget.objects):
             group_box = QGroupBox(f"Object {i}")
@@ -328,17 +345,7 @@ class MainWindow(QMainWindow):
             length_input = QLineEdit(f"{obj.length:.4f}")
             transparency_input = QLineEdit(f"{obj.transparency:.4f}")
 
-            # Connect input fields to update method
-            x_pos_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'x_pos', text))
-            y_pos_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'y_pos', text))
-            z_pos_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'z_pos', text))
-            x_rot_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'x_rot', text))
-            y_rot_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'y_rot', text))
-            z_rot_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'z_rot', text))
-            color_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'color', text))
-            size_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'size', text))
-            length_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'length', text))
-            transparency_input.textChanged.connect(lambda text, index=i: self.updateObject(index, 'transparency', text))
+            self.connectInputFields(i, x_pos_input, y_pos_input, z_pos_input, x_rot_input, y_rot_input, z_rot_input, color_input, size_input, length_input, transparency_input)
 
             form_layout.addRow(QLabel("X Position"), x_pos_input)
             form_layout.addRow(QLabel("Y Position"), y_pos_input)
@@ -354,7 +361,6 @@ class MainWindow(QMainWindow):
             group_box.setLayout(form_layout)
             self.scroll_layout.addWidget(group_box)
 
-            # Store references to input fields
             self.input_fields.append({
                 'x_pos': x_pos_input,
                 'y_pos': y_pos_input,
@@ -368,16 +374,17 @@ class MainWindow(QMainWindow):
                 'transparency': transparency_input
             })
 
-        self.scroll_content.setLayout(self.scroll_layout)
-        self.scroll_area.setWidget(self.scroll_content)
-
-        self.splitter.addWidget(self.scroll_area)
-
-        dock_widget.setWidget(self.splitter)
-
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
-
-
+    def connectInputFields(self, index, x_pos_input, y_pos_input, z_pos_input, x_rot_input, y_rot_input, z_rot_input, color_input, size_input, length_input, transparency_input):
+        x_pos_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'x_pos', text))
+        y_pos_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'y_pos', text))
+        z_pos_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'z_pos', text))
+        x_rot_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'x_rot', text))
+        y_rot_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'y_rot', text))
+        z_rot_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'z_rot', text))
+        color_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'color', text))
+        size_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'size', text))
+        length_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'length', text))
+        transparency_input.textChanged.connect(lambda text, index=index: self.updateObject(index, 'transparency', text))
 
     def update_controller(self):
         def apply_deadzone(value, threshold):
