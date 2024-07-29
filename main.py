@@ -286,9 +286,19 @@ class MainWindow(QMainWindow):
         controller_layout.addWidget(self.combo_box)
         controller_group_box = QGroupBox("Controller")
         controller_group_box.setLayout(controller_layout)
-        layout.addWidget(controller_group_box)
         self.splitter.addWidget(controller_group_box)
         
+
+        # Add the new Radio Address section
+        radio_address_group_box = QGroupBox("Radio Address")
+        radio_address_layout = QFormLayout()
+        atlas_input = QLineEdit()
+        pbody_input = QLineEdit()
+        radio_address_layout.addRow(QLabel("Atlas"), atlas_input)
+        radio_address_layout.addRow(QLabel("Pbody"), pbody_input)
+        radio_address_group_box.setLayout(radio_address_layout)
+        self.splitter.addWidget(radio_address_group_box)
+
         # Create a scroll area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)  # Make the scroll area resizable
@@ -366,6 +376,7 @@ class MainWindow(QMainWindow):
         dock_widget.setWidget(self.splitter)
 
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
+
 
 
     def update_controller(self):
