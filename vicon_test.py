@@ -1,13 +1,30 @@
-import vicon_core_api
-from vicon_core_api import *
+import pyvicon_datastream as pv
 
-import tracker_api
-from tracker_api import BasicObjectServices
+VICON_TRACKER_IP = "10.0.108.3"
+OBJECT_NAME = "My_Object"
 
-c = Client('localhost')
-print(c.connected)
+vicon_client = pv.PyViconDatastream()
+ret = vicon_client.connect(VICON_TRACKER_IP)
 
-services = BasicObjectServices(c)
-result, object_list = services.basic_object_list()
-print(result)
-print(object_list)
+if ret != pv.Result.Success:
+    print(f"Connection to {VICON_TRACKER_IP} failed")
+else:
+    print(f"Connection to {VICON_TRACKER_IP} successful")
+
+
+
+
+
+
+
+
+# from pyvicon_datastream import tools
+
+# VICON_TRACKER_IP = "10.0.108.3"
+# OBJECT_NAME = "My_Object"
+
+# mytracker = tools.ObjectTracker(VICON_TRACKER_IP)
+# while(True):
+#     position = mytracker.get_position(OBJECT_NAME)
+#     print(f"Position: {position}")
+#     time.sleep(0.5)
