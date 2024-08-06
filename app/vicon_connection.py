@@ -29,6 +29,8 @@ class ViconConnection:
         asyncio.run(vicon.get_position())
 
     async def get_position(self):
-        while True:
+        while self.connected:
             position = self.mytracker.get_position(self.object_name)
+            self.position_updated.emit(position)
             await asyncio.sleep(0.01)  # 100Hz to match the vicon stream
+        print("Vicon Connection Closed")

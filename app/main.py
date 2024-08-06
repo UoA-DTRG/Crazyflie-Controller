@@ -15,8 +15,10 @@ from vicon_connection import ViconConnection
 def main():
     glutInit(sys.argv)  # Initialize GLUT before starting the QApplication
     app = QApplication(sys.argv)
-    main_window = MainWindow()
+    
     vicon = ViconConnection('192.168.1.1', 'mug')
+    main_window = MainWindow(vicon)
+
     main_window.show()
 
     sys.exit(app.exec_())

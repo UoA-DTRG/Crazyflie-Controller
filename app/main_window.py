@@ -1,11 +1,13 @@
 import pygame
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QTimer, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDockWidget,QSplitter, QVBoxLayout, QPushButton, QMainWindow, QWidget,QScrollArea, QOpenGLWidget, QApplication, QFormLayout,QComboBox,QGroupBox,QLineEdit,QLabel
 from gl_widget import GLWidget
+from vicon_connection import ViconConnection
 
 class MainWindow(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, vicon:ViconConnection, parent=None):
         super(MainWindow, self).__init__(parent)
+        self.vicon = vicon
         self.initUI()
 
         # Initialize Pygame for joystick input
@@ -19,6 +21,9 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_controller)
         self.timer.start(16)  # Update approximately every 16 milliseconds (about 60 FPS)
+
+        # Connect Vicon signals to slots
+        self.vicon.position_updated.connect(self.update_vicon_position)
     
     def initUI(self):
         self.setWindowTitle('Collaborative Control Interface')
@@ -230,3 +235,14 @@ class MainWindow(QMainWindow):
         except ValueError:
             # Handle invalid input (e.g., non-numeric values)
             pass
+
+    @pyqtSlot(float, float, float)
+    def update_vicon_position(self, x, y, z):
+        # Assuming the Vicon data corresponds to the tracked object (first object for simplicity)
+        tracked_object_index = 0
+        if tracked_object_index < len(self.glWidget.objects):
+            obj = self.glWidget.objects[tracked_object_index]
+            obj.x_pos = x
+            obj.y_pos = y
+            obj.z_pos = z
+            self.refreshUI()
