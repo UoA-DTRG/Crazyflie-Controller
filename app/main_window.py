@@ -34,16 +34,30 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         self.setupGLWidget(layout)
-        self.setupConnectButton(layout)
+        self.setupDroneConnectButton(layout)
+        self.setupViconConnectButton(layout)
         self.setupDockWidget()
 
     def setupGLWidget(self, layout):
         self.glWidget = GLWidget(self)
         layout.addWidget(self.glWidget)
 
-    def setupConnectButton(self, layout):
+    def setupDroneConnectButton(self, layout):
         button = QPushButton('Connect to Drone', self)
         layout.addWidget(button)
+    
+    def setupViconConnectButton(self, layout):
+        button = QPushButton('Connect to Vicon', self)
+        layout.addWidget(button)
+        button.clicked.connect(self.vicon.connect)
+        if self.vicon.connected:
+            button.setEnabled(False)
+            button.setText('Connected to Vicon')
+            button.setStyleSheet("background-color : green") 
+        else: 
+            button.setEnabled(True)
+            button.setText('Connect to Vicon')
+            button.setStyleSheet("") 
 
     def setupDockWidget(self):
         dock_widget = QDockWidget(self)

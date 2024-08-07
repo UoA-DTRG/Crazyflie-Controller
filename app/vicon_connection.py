@@ -1,26 +1,51 @@
 import pyvicon_datastream as pv
 from pyvicon_datastream import tools
 import asyncio
+from PyQt5.QtCore import QObject, pyqtSignal
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
-class ViconConnection:
+class ViconConnection(QObject):
+    position_updated = pyqtSignal(float, float, float)  # Define the signal, emitting a tuple for position
+
     def __init__(self, vicon_tracker_ip, object_name):
+        super().__init__()  # Properly initialize QObject
         self.vicon_tracker_ip = vicon_tracker_ip
         self.object_name = object_name
         self.vicon_client = pv.PyViconDatastream()
-        self.mytracker = tools.ObjectTracker(self.vicon_tracker_ip)
+        self.mytracker = None
         self.connected = False
-    
+
+    async def _attempt_connection(self):
+        return self.vicon_client.connect(self.vicon_tracker_ip)
+
     def connect(self):
-        ret = self.vicon_client.connect(self.vicon_tracker_ip)
+        timeout=5
+        def attempt_connection():
+            return self.vicon_client.connect(self.vicon_tracker_ip)
+
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(attempt_connection)
+            try:
+                ret = future.result(timeout=timeout)
+            except TimeoutError:
+                print(f"Connection to {self.vicon_tracker_ip} timed out")
+                self.connected = False
+                return False
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                self.connected = False
+                return False
+
         if ret != pv.Result.Success:
             print(f"Connection to {self.vicon_tracker_ip} failed")
             self.connected = False
             return False
         else:
             print(f"Connection to {self.vicon_tracker_ip} successful")
+            self.mytracker = tools.ObjectTracker(self.vicon_tracker_ip)
             self.connected = True
             return True
-
+            
     def start_tracking(self):
         if not self.connected:
             print("Not connected to the Vicon Tracker. Please connect first.")
@@ -29,6 +54,7 @@ class ViconConnection:
         asyncio.run(vicon.get_position())
 
     async def get_position(self):
+        print("Vicon Connection Open")
         while self.connected:
             position = self.mytracker.get_position(self.object_name)
             self.position_updated.emit(position)
