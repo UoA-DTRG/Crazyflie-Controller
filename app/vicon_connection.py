@@ -2,7 +2,7 @@ import pyvicon_datastream as pv
 from pyvicon_datastream import tools
 import asyncio
 from PyQt5.QtCore import QObject, pyqtSignal
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from multiprocessing import Process, Queue, TimeoutError as MPTimeoutError
 
 class ViconConnection(QObject):
     position_updated = pyqtSignal(float, float, float)  # Define the signal, emitting a tuple for position
@@ -15,28 +15,39 @@ class ViconConnection(QObject):
         self.mytracker = None
         self.connected = False
 
-    async def _attempt_connection(self):
-        return self.vicon_client.connect(self.vicon_tracker_ip)
+    def _attempt_connection(self, queue):
+        try:
+            result = self.vicon_client.connect(self.vicon_tracker_ip)
+            queue.put(result)
+        except Exception as e:
+            queue.put(e)
 
     def connect(self):
-        timeout=5
-        def attempt_connection():
-            return self.vicon_client.connect(self.vicon_tracker_ip)
+        timeout = 5  # Timeout in seconds
+        queue = Queue()
+        process = Process(target=self._attempt_connection, args=(queue,))
+        process.start()
+        
+        try:
+            result = queue.get(timeout=timeout)
+            if isinstance(result, Exception):
+                raise result
+        except MPTimeoutError:
+            print(f"Connection to {self.vicon_tracker_ip} timed out")
+            process.terminate()  # Forcefully terminate the process
+            process.join()  # Ensure the process has finished
+            self.connected = False
+            return False
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            process.terminate()  # Ensure the process is terminated
+            process.join()  # Ensure the process has finished
+            self.connected = False
+            return False
+        
+        process.join()  # Ensure the process has finished
 
-        with ThreadPoolExecutor() as executor:
-            future = executor.submit(attempt_connection)
-            try:
-                ret = future.result(timeout=timeout)
-            except TimeoutError:
-                print(f"Connection to {self.vicon_tracker_ip} timed out")
-                self.connected = False
-                return False
-            except Exception as e:
-                print(f"Unexpected error: {e}")
-                self.connected = False
-                return False
-
-        if ret != pv.Result.Success:
+        if result != pv.Result.Success:
             print(f"Connection to {self.vicon_tracker_ip} failed")
             self.connected = False
             return False
