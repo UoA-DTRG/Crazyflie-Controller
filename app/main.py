@@ -16,7 +16,7 @@ def main():
     glutInit(sys.argv)  # Initialize GLUT before starting the QApplication
     app = QApplication(sys.argv)
 
-    vicon = ViconConnection('192.168.1.1', 'mug') #getting stuck here
+    vicon = ViconConnection('192.168.10.1', 'mug') #getting stuck here
     main_window = MainWindow(vicon)
 
     main_window.show()

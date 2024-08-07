@@ -45,19 +45,28 @@ class MainWindow(QMainWindow):
     def setupDroneConnectButton(self, layout):
         button = QPushButton('Connect to Drone', self)
         layout.addWidget(button)
-    
+        
+    @pyqtSlot()
+    def connect_to_vicon(self):
+        if self.vicon.connect():
+            self.update_vicon_button(True)
+        else:
+            self.update_vicon_button(False)
+
+    def update_vicon_button(self, connected):
+        if connected:
+            self.vicon_button.setEnabled(False)
+            self.vicon_button.setText('Connected to Vicon')
+            self.vicon_button.setStyleSheet("background-color : green")
+        else:
+            self.vicon_button.setEnabled(True)
+            self.vicon_button.setText('Connect to Vicon')
+            self.vicon_button.setStyleSheet("")
+
     def setupViconConnectButton(self, layout):
-        button = QPushButton('Connect to Vicon', self)
-        layout.addWidget(button)
-        button.clicked.connect(self.vicon.connect)
-        if self.vicon.connected:
-            button.setEnabled(False)
-            button.setText('Connected to Vicon')
-            button.setStyleSheet("background-color : green") 
-        else: 
-            button.setEnabled(True)
-            button.setText('Connect to Vicon')
-            button.setStyleSheet("") 
+        self.vicon_button = QPushButton('Connect to Vicon', self)
+        layout.addWidget(self.vicon_button)
+        self.vicon_button.clicked.connect(self.connect_to_vicon)
 
     def setupDockWidget(self):
         dock_widget = QDockWidget(self)

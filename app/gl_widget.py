@@ -19,7 +19,7 @@ class GLWidget(QOpenGLWidget):
 
         # Initialize some objects
         self.objects.append(SceneObject(0.0, 0.0, 0.5, 0.0, 0.0, 0.0, (1.0, 0.0, 0.0), 0.5, name="Red Cube"))
-        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 0.5, name="Blue Cube" ,transparency=0.5, tracked=True))
+        self.objects.append(SceneObject(1.5, 0.0, 0.5, 0.0, 0.0, 0.0, (0.0, 0.0, 1.0), 0.5, name="mug" ,transparency=0.5, tracked=True))
         self.objects.append(SceneObject(3.0, 0.0, 1.5, 0.0, 0.0, 0.0, (0.0, 1.0, 0.0), 0.25, name="Green Cube",length=3.0))  # Green rectangle
 
         # Camera parameters
