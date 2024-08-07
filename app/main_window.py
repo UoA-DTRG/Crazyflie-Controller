@@ -3,7 +3,7 @@ from PyQt5.QtCore import QTimer, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDockWidget,QSplitter, QVBoxLayout, QPushButton, QMainWindow, QWidget,QScrollArea, QOpenGLWidget, QApplication, QFormLayout,QComboBox,QGroupBox,QLineEdit,QLabel
 from gl_widget import GLWidget
 from vicon_connection import ViconConnection
-
+from structs import PositionData
 class MainWindow(QMainWindow):
     def __init__(self, vicon:ViconConnection, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -250,13 +250,14 @@ class MainWindow(QMainWindow):
             # Handle invalid input (e.g., non-numeric values)
             pass
 
-    @pyqtSlot(float, float, float)
-    def update_vicon_position(self, x, y, z):
-        # Assuming the Vicon data corresponds to the tracked object (first object for simplicity)
-        tracked_object_index = 0
-        if tracked_object_index < len(self.glWidget.objects):
-            obj = self.glWidget.objects[tracked_object_index]
-            obj.x_pos = x
-            obj.y_pos = y
-            obj.z_pos = z
-            self.refreshUI()
+    @pyqtSlot(PositionData)
+    def update_vicon_position(self, pos_data: PositionData):
+        for obj in self.glWidget.objects:
+            if obj.tracked and obj.name == pos_data.name:
+                obj.x_pos = pos_data.x
+                obj.y_pos = pos_data.y
+                obj.z_pos = pos_data.z
+                obj.x_rot = pos_data.x_rot
+                obj.y_rot = pos_data.y_rot
+                obj.z_rot = pos_data.z_rot
+                self.refreshUI()

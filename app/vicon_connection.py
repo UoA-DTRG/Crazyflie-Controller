@@ -3,9 +3,9 @@ from pyvicon_datastream import tools
 import asyncio
 from PyQt5.QtCore import QObject, pyqtSignal
 from multiprocessing import Process, Queue, TimeoutError as MPTimeoutError
-
+from structs import PositionData
 class ViconConnection(QObject):
-    position_updated = pyqtSignal(float, float, float)  # Define the signal, emitting a tuple for position
+    position_updated = pyqtSignal(PositionData)  # Define the signal, emitting a tuple for position
 
     def __init__(self, vicon_tracker_ip, object_name):
         super().__init__()  # Properly initialize QObject
@@ -68,6 +68,8 @@ class ViconConnection(QObject):
         print("Vicon Connection Open")
         while self.connected:
             position = self.mytracker.get_position(self.object_name)
+            rotation = self.mytracker.get_rotation(self.object_name)
+            position = PositionData(self.object_name, *position, *rotation)
             self.position_updated.emit(position)
             await asyncio.sleep(0.01)  # 100Hz to match the vicon stream
         print("Vicon Connection Closed")
