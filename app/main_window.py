@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_controller)
         self.timer.start(16)  # Update approximately every 16 milliseconds (about 60 FPS)
-
+        
         # Connect Vicon signals to slots
         self.vicon.position_updated.connect(self.update_vicon_position)
     
@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
         self.setupGLWidget(layout)
         self.setupDroneConnectButton(layout)
         self.setupViconConnectButton(layout)
+        self.setupStartTrackingButton(layout)
         self.setupDockWidget()
 
     def setupGLWidget(self, layout):
@@ -67,6 +68,28 @@ class MainWindow(QMainWindow):
         self.vicon_button = QPushButton('Connect to Vicon', self)
         layout.addWidget(self.vicon_button)
         self.vicon_button.clicked.connect(self.connect_to_vicon)
+    
+    @pyqtSlot()
+    def start_stop_tracking(self):
+        if self.vicon.tracking:
+            self.vicon.stop_tracking()
+            self.update_tracking_button(False)
+        else:
+            if self.vicon.start_tracking():
+                self.update_tracking_button(True)
+
+    def update_tracking_button(self, tracking):
+        if tracking:
+            self.tracking_button.setText('Stop Tracking')
+            self.tracking_button.setStyleSheet("background-color : red")
+        else:
+            self.tracking_button.setText('Start Tracking')
+            self.tracking_button.setStyleSheet("")
+
+    def setupStartTrackingButton(self, layout):
+        self.tracking_button = QPushButton('Start Tracking', self)
+        layout.addWidget(self.tracking_button)
+        self.tracking_button.clicked.connect(self.start_stop_tracking)
 
     def setupDockWidget(self):
         dock_widget = QDockWidget(self)

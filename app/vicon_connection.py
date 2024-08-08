@@ -1,12 +1,13 @@
 import pyvicon_datastream as pv
 from pyvicon_datastream import tools
-import asyncio
-from PyQt5.QtCore import QObject, pyqtSignal
+import math
+from PyQt5.QtCore import QObject, pyqtSignal,QTimer
 from multiprocessing import Process, Queue, TimeoutError as MPTimeoutError
 from structs import PositionData
 class ViconConnection(QObject):
     position_updated = pyqtSignal(PositionData)  # Define the signal, emitting a tuple for position
-
+    finished = pyqtSignal()
+    
     def __init__(self, vicon_tracker_ip, object_name):
         super().__init__()  # Properly initialize QObject
         self.vicon_tracker_ip = vicon_tracker_ip
@@ -14,6 +15,9 @@ class ViconConnection(QObject):
         self.vicon_client = pv.PyViconDatastream()
         self.mytracker = None
         self.connected = False
+        self.tracking = False
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.get_position)
 
     def _attempt_connection(self, queue):
         try:
@@ -60,16 +64,24 @@ class ViconConnection(QObject):
     def start_tracking(self):
         if not self.connected:
             print("Not connected to the Vicon Tracker. Please connect first.")
-            return
-        vicon = ViconConnection(self.vicon_tracker_ip, self.object_name)
-        asyncio.run(vicon.get_position())
+            return False
+        self.tracking = True
+        self.timer.start(10)  # Start the timer with 10ms intervals
+        return True
 
-    async def get_position(self):
-        print("Vicon Connection Open")
-        while self.connected:
+    def stop_tracking(self):
+        self.tracking = False
+        self.timer.stop()
+
+    def get_position(self):
+        if self.connected and self.tracking:
             position = self.mytracker.get_position(self.object_name)
-            rotation = self.mytracker.get_rotation(self.object_name)
-            position = PositionData(self.object_name, *position, *rotation)
-            self.position_updated.emit(position)
-            await asyncio.sleep(0.01)  # 100Hz to match the vicon stream
-        print("Vicon Connection Closed")
+            if position and len(position[2]) > 0:
+                obj_data = position[2][0]
+                obj_name = obj_data[0]
+                x, z, y = obj_data[2], obj_data[3], obj_data[4]
+                x_rot, z_rot, y_rot  = math.degrees(obj_data[5]), math.degrees(obj_data[6]), math.degrees(obj_data[7])
+                pos_data = PositionData(obj_name, x/1000, y/1000, z/1000, x_rot, y_rot, z_rot)
+                self.position_updated.emit(pos_data)
+        else:
+            print("not tracking or connected")
