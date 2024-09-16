@@ -5,16 +5,70 @@ from cflib.crazyflie.swarm import CachedCfFactory# type: ignore
 from cflib.crazyflie.swarm import Swarm# type: ignore
 from cflib.crazyflie import syncCrazyflie# type: ignore
 
+import control# type: ignore
+import numpy as np
+
+# LQR CONTROLLER SETUP
+DragCoef = 0.01
+BeamMass = 0.01
+BeamMOI = 0.1
+BeamLength = 1
+Xi = np.zeros(6)  # zero initial conditions
+
+# Define the A Matrix
+A = np.zeros((6, 6))
+A[0, 1] = 1
+A[1, 1] = -DragCoef
+A[2, 3] = 1
+A[3, 3] = -DragCoef
+A[4, 5] = 1
+A[5, 5] = -DragCoef
+
+# Define the B Matrix
+B = np.zeros((6, 3))
+B[1, 0] = 1 / BeamMass
+B[3, 1] = 1 / BeamMass
+B[5, 2] = BeamLength / BeamMOI
+
+# Define the C Matrix
+C = np.array([
+    [1, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0]
+])
+
+# Define the D Matrix
+D = np.zeros((3, 3))
+
+Abar = np.block([
+    [np.zeros((3, 3)), C],
+    [np.zeros((6, 3)), A]
+])
+
+Bbar = np.vstack([
+    np.zeros((3, 3)),
+    B
+])
+
+Q = np.diag([100, 100, 20, 1, 1e-7, 1, 1e-7, 1, 1e-7])
+R = np.diag([80, 80, 80])
+
+K, S, E = control.lqr(A, B, Q, R, N)
+
+
 uris = [
     'radio://0/80/2M/E7E7E7E7E7', #Atlas
     'radio://0/81/2M/E6E7E6E7E6', #P-Body
 ]
+
+
 
 def take_off(scf):
     commander= scf.cf.high_level_commander
 
     commander.takeoff(1.0, 2.0)
     time.sleep(3)
+
 
 def land(scf):
     commander= scf.cf.high_level_commander
@@ -23,6 +77,17 @@ def land(scf):
     time.sleep(2)
 
     commander.stop()
+
+def update_controller(scf, x):
+    commander = scf.cf.high_level_commander
+
+    u = -K @ x
+
+
+    commander.send_zdistance_setpoint(self, roll, pitch, yawrate, zdistance)
+    time.sleep(0.1)
+
+
 
 def run_controller():
     with syncCrazyflie('radio://0/80/2M/E7E7E7E7E7', cf=Crazyflie(rw_cache='./cache')) as scf:
