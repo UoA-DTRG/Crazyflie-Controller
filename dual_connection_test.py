@@ -61,5 +61,5 @@ if __name__ == '__main__':
         swarm.reset_estimators()
         
         swarm.parallel_safe(take_off)
-        swarm.parallel_safe(run_square_sequence)
+        # swarm.parallel_safe(run_square_sequence)
         swarm.parallel_safe(land)
