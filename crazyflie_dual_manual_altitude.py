@@ -73,6 +73,8 @@ def run_controller():
                         scf.stop() # emergency stop
                 
             u = np.array([roll, pitch, yawrate])
+            print("Control input: ", u)
+
             update_controller(scf,u)
 
 
