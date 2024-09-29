@@ -3,8 +3,11 @@ import time
 import cflib.crtp# type: ignore
 from cflib.crazyflie.swarm import CachedCfFactory# type: ignore
 from cflib.crazyflie.swarm import Swarm# type: ignore
+from cflib.crazyflie import Crazyflie
 from cflib.crazyflie import syncCrazyflie# type: ignore
 import traceback
+
+# import logging
 
 # import control# type: ignore
 import numpy as np
@@ -16,8 +19,11 @@ uris = [
     'radio://0/81/2M/E6E7E6E7E6', #P-Body
 ]
 
+# Only output errors from the logging framework
+# logging.basicConfig(level=logging.ERROR)
+
 REF = np.array([0, 0, 0])  # reference state
-height = 1.0
+height = 0.6
 # LQR CONTROLLER SETUP
 
 
@@ -35,33 +41,22 @@ def light_check(scf):
  
 
 
-# def update_controller(scf,u):
-#     commander = scf.cf.high_level_commander
-#     # calculate the control input based on the state x and the reference REF
-
-#     roll = u[0]
-#     pitch = u[1]
-#     yawrate = u[2]
-
-#     commander.send_zdistance_setpoint(self, roll, pitch, yawrate, height)
-#     time.sleep(0.1)
-
-
+def update_controller(scf,roll,pitch,yawrate,altitude):
+    scf.cf.commander.send_zdistance_setpoint(roll, pitch, yawrate, altitude)
 
 
 def take_off(scf):
     commander= scf.cf.high_level_commander
 
-    commander.takeoff(1.0, 2.0)
+    commander.takeoff(height, 2.0)
     time.sleep(3)
     
 def land(scf):
-    commander= scf.cf.high_level_commander
-
-    commander.land(0.0, 5.0)
+    scf.cf.commander.send_notify_setpoint_stop()
+    scf.cf.high_level_commander.land(0.0, 5.0)
     time.sleep(5)
 
-    commander.stop()  
+    scf.cf.high_level_commander.commander.stop()  
 
 # EMERGENCY STOP
 def stop(scf):
@@ -69,10 +64,24 @@ def stop(scf):
     commander.stop()
     print('EMERGENCY STOP OCCURED')
     
-
+def hold_pos(scf):
+    commander= scf.cf.high_level_commander
+    commander.go_to(0, 0, 0, 0, 1.0, relative=True)
+    time.sleep(2)
+    
+# def log_setpoints(scf):
+#     scf.cf.
 
 if __name__ == '__main__':
     # K, S, E = calculateControllerGains()
+    
+    # lg_stab = LogConfig(name='Stabilizer', period_in_ms=10)
+    # lg_stab.add_variable('stabilizer.roll', 'float')
+    # lg_stab.add_variable('stabilizer.pitch', 'float')
+    # lg_stab.add_variable('stabilizer.yaw', 'float')
+    
+    
+    
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
 
@@ -106,28 +115,40 @@ if __name__ == '__main__':
             flying = True
             start_time = time.time()
             
+            # swarm.parallel_safe(hold_pos)
+            
+            
+            print('starting altitude flight')
             while flying:
                 current_time = time.time()
                 elapsed_time = current_time - start_time
 
-                if elapsed_time > 10:
+                if elapsed_time > 20:
                     print("Timeout reached. Exiting loop.")
                     break
-
+                
                 for event in pygame.event.get():
                     if event.type == pygame.JOYAXISMOTION:
                         roll = controller.get_axis(3) * 5
                         pitch = controller.get_axis(4) * 5
+                        if abs(roll) < 1:
+                            roll = 0
+                        if abs(pitch) < 1:
+                            pitch = 0
                     if event.type == pygame.JOYBUTTONDOWN:
                         if event.button == 1:  # B button
                             flying = False
                         if event.button == 3:  # Y button
                             raise Exception('Manual Emegency Stop') # emergency stop
-
-                u = np.array([roll, pitch, yawrate])
-                print("Control input: ", u)
-                time.sleep(0.02) # 50hz
-                # update_controller(scf, u)
+                print("Control input: ", [roll, pitch, yawrate, height])
+                args_dict = {
+                    uris[0]: [roll, pitch, yawrate, height],
+                    uris[1]: [roll, pitch, yawrate, height],
+                }
+                swarm.parallel_safe(update_controller, args_dict = args_dict)
+                time.sleep(0.01) # 100hz
+                
+                # swarm.parallel_safe(log_setpoints)
 
             swarm.parallel_safe(land)
         except Exception as e:
