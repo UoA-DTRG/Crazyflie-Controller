@@ -64,8 +64,8 @@ def run_controller():
         while(flying == True):
             for event in pygame.event.get():
                 if event.type == pygame.JOYAXISMOTION:
-                    roll = controller.get_axis(3)
-                    pitch = controller.get_axis(4)
+                    roll = controller.get_axis(3)*5
+                    pitch = controller.get_axis(4)*5
                 if event.type == pygame.JOYBUTTONDOWN:
                     if event.button == 1:  # B button
                         flying = False
