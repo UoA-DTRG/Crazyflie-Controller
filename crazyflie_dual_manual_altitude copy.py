@@ -67,8 +67,22 @@ def hold_pos(scf):
     commander.go_to(0, 0, 0, 0, 1.0, relative=True)
     time.sleep(2)
 
+def get_pos(position, current_pos):
+    if len(position[2]) > 0:
+        obj_data = position[2][0]
+        x, z, y = obj_data[2], obj_data[3], obj_data[4]
+        x_rot, z_rot, y_rot  = math.degrees(obj_data[5]), math.degrees(obj_data[6]), math.degrees(obj_data[7])
+        return np.array([x/1000, y/1000, z/1000, x_rot, y_rot, z_rot])
+    else:
+        return current_pos
+                
+
 
 if __name__ == '__main__':
+
+    vicon_client = pv.PyViconDatastream()
+    ret = vicon_client.connect(VICON_TRACKER_IP)
+    mytracker = tools.ObjectTracker(VICON_TRACKER_IP)
     
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
@@ -82,6 +96,9 @@ if __name__ == '__main__':
     pitch = 0
     yawrate = 0
 
+    current_pos = np.array([0,0,0,0,0,0])
+    prev_pos = np.array([0,0,0,0,0,0])
+
     with Swarm(uris, factory=factory) as swarm:
         try:
             if ret != pv.Result.Success:
@@ -89,11 +106,15 @@ if __name__ == '__main__':
             else:
                 print(f"Connection to {VICON_TRACKER_IP} successful")
             
+            
+            
             swarm.parallel_safe(light_check)
             swarm.reset_estimators()
             
             offset = get_pos(mytracker.get_position(OBJECT_NAME))
             print("Offset Pos & Rot: ",offset)
+            
+            
             
             
             waiting = True
@@ -112,30 +133,55 @@ if __name__ == '__main__':
             flying = True
             start_time = time.time()
             
-            # swarm.parallel_safe(hold_pos)
+            current_pos = get_pos(mytracker.get_position(OBJECT_NAME), current_pos)
+            prev_pos = current_pos
+            mytracker = tools.ObjectTracker(VICON_TRACKER_IP)
+            current_time = time.time()
+            prev_time = current_time
+
+            y_tracker = 0
             
-            prev_pos = get_pos(mytracker.get_position(OBJECT_NAME))
             print('starting altitude flight')
             while flying:
+            
                 # safety timeout
-                if elapsed_time > 20:
+                if elapsed_time > 5:
                     print("Timeout reached. Exiting loop.")
                     break
                 
                 for event in pygame.event.get():
-                    if event.type == pygame.JOYAXISMOTION:
-                        roll = controller.get_axis(3) * 5
-                        pitch = controller.get_axis(4) * 5
-                        if abs(roll) < 1:
-                            roll = 0
-                        if abs(pitch) < 1:
-                            pitch = 0
+                    # if event.type == pygame.JOYAXISMOTION:
+                        # roll = controller.get_axis(3) * 5
+                        # pitch = controller.get_axis(4) * 5
+                        # if abs(roll) < 1:
+                        #     roll = 0
+                        # if abs(pitch) < 1:
+                        #     pitch = 0
                     if event.type == pygame.JOYBUTTONDOWN:
                         if event.button == 1:  # B button
                             flying = False
                         if event.button == 3:  # Y button
                             raise Exception('Manual Emegency Stop') # emergency stop
+                
+                
+                    d_time = time.time() - current_time
+                
+                # update states
+                current_pos = get_pos(mytracker.get_position(OBJECT_NAME), current_pos)
+                current_vel = (np.subtract(current_pos,prev_pos)) / d_time
+                print("POS:" ,current_pos , "VEL:", current_vel)
+                prev_pos = current_pos
+                current_time = time.time()
+                elapsed_time = current_time - start_time
+                
+                # calculate the control output
+                
+                y_tracker += Kr @ (reference - (C @ x))
+                u = -Kx @ x + y_tracker
+                
                 print("Control input: ", [roll, pitch, yawrate, height])
+                
+                # send to drones
                 args_dict = {
                     uris[0]: [roll, pitch, yawrate, height],
                     uris[1]: [roll, pitch, yawrate, height],
@@ -143,9 +189,6 @@ if __name__ == '__main__':
                 swarm.parallel_safe(update_controller, args_dict = args_dict)
               
                 time.sleep(0.01) # 100hz
-                
-                
-                # swarm.parallel_safe(log_setpoints)
 
             swarm.parallel_safe(land)
         except Exception as e:

@@ -17,7 +17,6 @@ else:
     print(f"Connection to {VICON_TRACKER_IP} successful")
 
 
-
 def get_pos(position, current_pos):
     if len(position[2]) > 0:
         obj_data = position[2][0]
