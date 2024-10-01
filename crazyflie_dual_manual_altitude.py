@@ -84,17 +84,9 @@ if __name__ == '__main__':
 
     with Swarm(uris, factory=factory) as swarm:
         try:
-            if ret != pv.Result.Success:
-                raise Exception('Connection to {VICON_TRACKER_IP} failed')
-            else:
-                print(f"Connection to {VICON_TRACKER_IP} successful")
-            
+
             swarm.parallel_safe(light_check)
-            swarm.reset_estimators()
-            
-            offset = get_pos(mytracker.get_position(OBJECT_NAME))
-            print("Offset Pos & Rot: ",offset)
-            
+            swarm.reset_estimators()            
             
             waiting = True
             while(waiting):
@@ -112,12 +104,11 @@ if __name__ == '__main__':
             flying = True
             start_time = time.time()
             
-            # swarm.parallel_safe(hold_pos)
             
-            prev_pos = get_pos(mytracker.get_position(OBJECT_NAME))
             print('starting altitude flight')
             while flying:
                 # safety timeout
+                elapsed_time = time.time() - start_time
                 if elapsed_time > 20:
                     print("Timeout reached. Exiting loop.")
                     break
@@ -142,11 +133,8 @@ if __name__ == '__main__':
                 }
                 swarm.parallel_safe(update_controller, args_dict = args_dict)
               
-                time.sleep(0.01) # 100hz
+                time.sleep(0.001) # 100hz
                 
-                
-                # swarm.parallel_safe(log_setpoints)
-
             swarm.parallel_safe(land)
         except Exception as e:
             swarm.parallel(stop)
