@@ -5,7 +5,7 @@ import numpy as np
 import math 
 
 VICON_TRACKER_IP = "192.168.10.1"
-OBJECT_NAME = "mug"
+OBJECT_NAME = "pipeCrazyflie"
 
 vicon_client = pv.PyViconDatastream()
 ret = vicon_client.connect(VICON_TRACKER_IP)

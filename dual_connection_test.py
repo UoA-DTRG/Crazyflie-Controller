@@ -35,23 +35,13 @@ def land(scf):
     time.sleep(2)
 
     commander.stop()
-def run_square_sequence(scf):
-    box_size = 1
+def hold_pos(scf):
     flight_time = 2
-
     commander= scf.cf.high_level_commander
 
-    commander.go_to(box_size, 0, 0, 0, flight_time, relative=True)
+    commander.go_to(0, 0, 0, 0, flight_time, relative=True)
     time.sleep(flight_time)
 
-    commander.go_to(0, box_size, 0, 0, flight_time, relative=True)
-    time.sleep(flight_time)
-
-    commander.go_to(-box_size, 0, 0, 0, flight_time, relative=True)
-    time.sleep(flight_time)
-
-    commander.go_to(0, -box_size, 0, 0, flight_time, relative=True)
-    time.sleep(flight_time)
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
