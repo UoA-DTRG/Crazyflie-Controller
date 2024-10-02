@@ -16,7 +16,7 @@ VICON_TRACKER_IP = "192.168.10.1"
 OBJECT_NAME = "pipeCrazyflie"
 
 LEFT_DRONE_NAME = "PbodyCrazyFlie"
-RIGHT_DRONE_NAME = "AtlasCrazyFlie"
+RIGHT_DRONE_NAME = "AtlasCrazyflie"
 YAW_THRESHOLD = 0.5
 VELOCITY_THRESHOLD = 10.0 
 WEIGHTING = 0.5
@@ -116,6 +116,7 @@ if __name__ == '__main__':
     full_history = []
     yaw_history = []
     yaw_track_history = []
+    setpoint_history = []
     timeT = []
 
     Kr = matrix = np.array([
@@ -189,7 +190,7 @@ if __name__ == '__main__':
                 # safety timeout
                 elapsed_time = time.time() - start_time
 
-                if elapsed_time > 5:
+                if elapsed_time > 20:
                     print("Timeout reached. Exiting loop.")
                     break
                 
@@ -213,6 +214,7 @@ if __name__ == '__main__':
                 # update states
                 current_pos = get_pos(mytracker.get_position(OBJECT_NAME), current_pos) - offset
                 current_vel = (np.subtract(current_pos,prev_pos)) / d_time
+                current_vel[5] = (current_vel[5] + prev_vel[5])/ 2
                 # Apply the filter
                 # Apply the filter on a per-component basis
                 for i in range(len(current_vel)):
@@ -245,16 +247,16 @@ if __name__ == '__main__':
                 #yaw P control (hopefully works well enough)
                 left_drone_pos = get_pos(mytracker.get_position(LEFT_DRONE_NAME), left_drone_pos) - left_drone_offset
                 right_drone_pos = get_pos(mytracker.get_position(RIGHT_DRONE_NAME), right_drone_pos) - right_drone_offset
-                yawrate1 = 0.1 * (x[4] - left_drone_pos[5])
-                yawrate2 = 0.1 * (x[4] - right_drone_pos[5])
+                yawrate1 = -1.3 * (x[4] - left_drone_pos[5])
+                yawrate2 = -1.3 * (x[4] - right_drone_pos[5])
                 yaw_track_history.append([math.degrees(left_drone_pos[5]),math.degrees(right_drone_pos[5]), math.degrees(x[4])])
                 yaw_history.append([math.degrees(yawrate1), math.degrees(yawrate2)])
                 
                 
-                
                 rot_yaw = yaw
                 if ((abs(rot_yaw - left_drone_pos[5]) > YAW_THRESHOLD) or (abs(rot_yaw - right_drone_pos[5]) > YAW_THRESHOLD)):
-                    rot_yaw = left_drone_pos[5] + left_drone_pos[5] / 2
+                    rot_yaw = (left_drone_pos[5] + left_drone_pos[5]) / 2
+                    print('YAW DESYNC','\n')
                 
                 # generate rotation matrix
                 rot_matrix = np.array([[np.cos(rot_yaw), -np.sin(rot_yaw)],
@@ -268,16 +270,16 @@ if __name__ == '__main__':
                 bx_2 = (1-WEIGHTING) * bx_thrust            
                 
                 # apply gain to the moment setpoint (1/beamlenght)
-                moment_z = u[2]/(50*beam_length)
+                moment_z = u[2]/(20*beam_length)
                 # combine the y and yaw
                 by_1 = WEIGHTING * by_thrust 
                 by_2 = (1-WEIGHTING) * by_thrust
                 
-                roll_1 = -0.25*bx_1
-                roll_2 = -0.25*bx_2
+                roll_1 = 0.25*bx_1
+                roll_2 = 0.25*bx_2
                 
-                pitch_1 = -0.025*by_1 - moment_z
-                pitch_2 = -0.025*by_2 + moment_z
+                pitch_1 = -0.25*(by_1 - moment_z)
+                pitch_2 = -0.25*(by_2 + moment_z)
                 
 
                 
@@ -291,10 +293,11 @@ if __name__ == '__main__':
                     uris[1]: [math.degrees(roll_2), math.degrees(pitch_2), math.degrees(yawrate1), height], # LEFT DRONE (PBODY)
                 }
                 swarm.parallel_safe(update_controller, args_dict = args_dict)
-
+                
                 x_history.append(x)
                 u_history.append(u)
                 timeT.append(elapsed_time)
+                setpoint_history.append([math.degrees(roll_1), math.degrees(pitch_1),math.degrees(roll_2), math.degrees(pitch_2)])
 
                 
                 time.sleep(0.01) # 100hz
@@ -310,6 +313,7 @@ if __name__ == '__main__':
     u_history = np.array(u_history)
     ref_history = np.array(ref_history)
     yaw_track_history = np.array(yaw_track_history)
+    setpoint_history = np.array(setpoint_history)
     # Print final state and control input
     # print("Final state:", x)
     # print("Final control input:", u)
@@ -318,7 +322,7 @@ if __name__ == '__main__':
     plt.figure(figsize=(12, 6))
 
     # Plot state response
-    plt.subplot(4, 1, 1)
+    plt.subplot(5, 1, 1)
     plt.plot(timeT, x_history)
     plt.title('State Response')
     plt.xlabel('Time (s)')
@@ -326,21 +330,28 @@ if __name__ == '__main__':
     plt.legend(['x1', 'x_vel', 'y','y_vel','phi','phi_vel'])  # Adjust legend based on the number of states
 
     # Plot control input
-    plt.subplot(4, 1, 2)
+    plt.subplot(5, 1, 2)
     plt.plot(timeT, u_history)
     plt.title('Control Input')
     plt.xlabel('Time (s)')
     plt.ylabel('Control Input')
     plt.legend(['Fx', 'Fy', 'Mz'])  # Adjust legend based on the number of inputs
+    
+    plt.subplot(5, 1, 3)
+    plt.plot(timeT, setpoint_history)
+    plt.title('Control Setpoints')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Control Setpoints')
+    plt.legend(['Right Roll', 'Right Pitch', 'Left Roll', 'Left Pitch'])  # Adjust legend based on the number of inputs
 
-    plt.subplot(4, 1, 3)
+    plt.subplot(5, 1, 4)
     plt.plot(timeT, yaw_track_history)
     plt.title('Yaw')
     plt.xlabel('Time (s)')
     plt.ylabel('measured yaw')
     plt.legend(['left drone', 'right drone', 'payload'])  # Adjust legend based on the number of inputs
     
-    plt.subplot(4, 1, 4)
+    plt.subplot(5, 1, 5)
     plt.plot(timeT, yaw_history)
     plt.title('Yaw Control Efforts')
     plt.xlabel('Time (s)')
