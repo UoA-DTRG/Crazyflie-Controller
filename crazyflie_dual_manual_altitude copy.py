@@ -214,7 +214,7 @@ if __name__ == '__main__':
                 # update states
                 current_pos = get_pos(mytracker.get_position(OBJECT_NAME), current_pos) - offset
                 current_vel = (np.subtract(current_pos,prev_pos)) / d_time
-                current_vel[5] = (current_vel[5] + prev_vel[5])/ 2
+                current_vel[5] = (current_vel[5] + prev_vel[5])/ 4
                 # Apply the filter
                 # Apply the filter on a per-component basis
                 for i in range(len(current_vel)):
@@ -270,16 +270,16 @@ if __name__ == '__main__':
                 bx_2 = (1-WEIGHTING) * bx_thrust            
                 
                 # apply gain to the moment setpoint (1/beamlenght)
-                moment_z = u[2]/(20*beam_length)
+                moment_z = u[2]/(2*beam_length)
                 # combine the y and yaw
                 by_1 = WEIGHTING * by_thrust 
                 by_2 = (1-WEIGHTING) * by_thrust
                 
-                roll_1 = 0.25*bx_1
-                roll_2 = 0.25*bx_2
+                roll_1 = 0.125*bx_1
+                roll_2 = 0.125*bx_2
                 
-                pitch_1 = -0.25*(by_1 - moment_z)
-                pitch_2 = -0.25*(by_2 + moment_z)
+                pitch_1 = -0.125*(by_1 - moment_z)
+                pitch_2 = -0.125*(by_2 + moment_z)
                 
 
                 
