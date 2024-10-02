@@ -103,7 +103,9 @@ if __name__ == '__main__':
     prev_pos = np.array([0,0,0,0,0,0])
     
     
-
+    x_history = []
+    u_history = []  
+    ref_history = []
 
     Kr = matrix = np.array([
         [0.00790569415042098, -4.64061582012919e-17, -1.03577480574660e-18],
@@ -207,14 +209,17 @@ if __name__ == '__main__':
                 # calculate the control output
                 
                 y_tracker += Kr @ (reference - (C @ x))
-                u = -Kx @ x + y_tracker
+                #  Try without reference tracking first!
+                u = -Kx @ x #+ y_tracker
                 print("WRENCH CONTROLL:", u)
                 yaw = current_pos[2]
+
+
                 ## split the sum of forces into the the agents compomonents
                 HT_thrusts = np.array([u[0], u[1]])
                 # generate rotation matrix
                 rot_matrix = np.array([[np.cos(yaw), -np.sin(yaw)],
-                     [np.sin(yaw), np.cos(yaw)]])
+                    [np.sin(yaw), np.cos(yaw)]])
                 # multiply the X Y forces by the rotation matrix
                 HT_thrusts = HT_thrusts @  rot_matrix
                 bx_thrust = HT_thrusts[0]
@@ -229,8 +234,8 @@ if __name__ == '__main__':
                 by_1 = WEIGHTING * by_thrust
                 by_2 = (1-WEIGHTING) * by_thrust
                 
-                roll_1 = -0.025*bx_1
-                roll_2 = -0.025*bx_2
+                roll_1 = 0.025*bx_1
+                roll_2 = 0.025*bx_2
                 
                 pitch_1 = -0.025*by_1
                 pitch_2 = -0.025*by_2
@@ -245,7 +250,12 @@ if __name__ == '__main__':
                     uris[1]: [roll_2, pitch_2, yawrate, height],
                 }
                 swarm.parallel_safe(update_controller, args_dict = args_dict)
-              
+
+                x_history.append(x)
+                u_history.append(u)
+
+                
+
                 time.sleep(0.01) # 100hz
 
             swarm.parallel_safe(land)
@@ -254,12 +264,55 @@ if __name__ == '__main__':
             print(traceback.format_exc())
 
     pygame.quit()
+    # Convert results to numpy arrays for easier handling
+    x_history = np.array(x_history)
+    u_history = np.array(u_history)
+    ref_history = np.array(ref_history)
+    # Print final state and control input
+    print("Final state:", x)
+    print("Final control input:", u)
+
+    # Plotting the results
+    plt.figure(figsize=(12, 6))
+
+    # Plot state response
+    plt.subplot(3, 1, 1)
+    plt.plot(time, x_history)
+    plt.title('State Response')
+    plt.xlabel('Time (s)')
+    plt.ylabel('State')
+    plt.legend(['x1', 'x_vel', 'y','y_vel','phi','phi_vel'])  # Adjust legend based on the number of states
+
+    # Plot control input
+    plt.subplot(3, 1, 2)
+    plt.plot(time, u_history)
+    plt.title('Control Input')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Control Input')
+    plt.legend(['Fx', 'Fy', 'Mz'])  # Adjust legend based on the number of inputs
+
+    # plot ref signal
+    plt.subplot(3, 1, 3)
+    plt.plot(time, ref_history)
+    plt.title('Reference Signal')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Reference Signal')
+    plt.legend(['x', 'y', 'phi'])  # Adjust legend based on the number of inputs
+
+    plt.tight_layout()
+    plt.show()  
+        
     
-    
+
+
+
     
     
 #     WRENCH CONTROLL: [857.08512512 858.54142999  59.63798632]
 # Control input:  [5.317982651320896, -14.201068875069337, 0, 0.6] 
+
+
+
 
 # POS: [ 3.73652486e-02  6.02547333e-01 -1.13130419e+00 -1.03106352e+01
 #  -8.16476002e+01  3.66965001e+01] 
@@ -268,13 +321,13 @@ if __name__ == '__main__':
 #  -2.92477986e+01  7.91292084e+01] 
 
 # WRENCH CONTROLL: [855.95566669 857.35891373  59.54330728]
-# Control input:  [5.1461289192816215, -14.242517202215039, 0, 0.6] 
+# Control input:  [5.1461289192816215, -14.242517202215039, 0, 0.6]
 
 # POS: [ 5.28514425e-02  6.02678886e-01 -1.11941423e+00 -8.72948218e+00
 #  -8.24716518e+01  3.34396755e+01] 
 
 # VEL: [ 1.50078108e+00  1.27489368e-02  1.15226633e+00  1.53230971e+02
-#  -7.98595873e+01 -3.15621824e+02] 
+#  -7.98595873e+01 -3.15621824e+02]
 
 # WRENCH CONTROLL: [854.88512151 856.26091938  59.43761508]
 # Control input:  [4.969913231591772, -14.284667768536094, 0, 0.6] 
