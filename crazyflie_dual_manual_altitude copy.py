@@ -75,8 +75,8 @@ def hold_pos(scf):
 def get_pos(position, current_pos):
     if len(position[2]) > 0:
         obj_data = position[2][0]
-        x, z, y = obj_data[2], obj_data[3], obj_data[4]
-        x_rot, z_rot, y_rot  = math.degrees(obj_data[5]), math.degrees(obj_data[6]), math.degrees(obj_data[7])
+        x, y, z = obj_data[2], obj_data[3], obj_data[4]
+        x_rot, y_rot, z_rot  = obj_data[5], obj_data[6], obj_data[7]
         return np.array([x/1000, y/1000, z/1000, x_rot, y_rot, z_rot])
     else:
         return current_pos
@@ -108,17 +108,19 @@ if __name__ == '__main__':
     x_history = []
     u_history = []  
     ref_history = []
+    full_history = []
+    timeT = []
 
     Kr = matrix = np.array([
-        [0.00790569415042098, -4.64061582012919e-17, -1.03577480574660e-18],
-        [-9.54512387211709e-18, 0.00790569415042098, -1.00080642132359e-18],
-        [-1.46655739177654e-17, 1.39020390585831e-18, 0.000559016994374947]
+        [3.46410161513777, -1.77635683940025e-15 , 9.69580370540695e-16],
+        [-1.33226762955019e-15, 3.46410161513776, 1.87943008165182e-15],
+        [-1.26082045570467e-13 ,1.83959217624210e-14 ,0.999999999999995]
     ])
 
     Kx = np.array([
-        [0.123892187662516, 0.970353507289202, -4.33515534884924e-16, -1.69428919979206e-15, -1.29295131797068e-16, -1.12395298233450e-15],
-        [-5.15808636551356e-17, -6.80011602582908e-16, 0.123892187662517, 0.970353507289206, -6.04825737656860e-17, -1.50467320189249e-16],
-        [-2.09204418865476e-16, -1.69052653530699e-15, 3.69073354975087e-17, 4.51981734746489e-16, 0.0334506522877385, 1.00044131801938]
+        [2.20073124711112  ,  0.699032773431331   , -1.44684744558436e-15  ,  2.22044604925031e-16   , 1.44487317823154e-15 ,   1.88088314185855e-16],
+        [-1.36236425151406e-15   , 7.19098461534927e-16  ,  2.20073124711111  ,  0.699032773431330  ,  1.87346911436869e-15  ,  6.17180657674190e-16],
+        [-5.14970241659517e-14  ,  -2.53198500656967e-14  ,  6.37121548776897e-15  ,  1.03094031648370e-15   , 0.462530140083379  ,  0.106465947992776]
     ])
 
     with Swarm(uris, factory=factory) as swarm:
@@ -160,7 +162,7 @@ if __name__ == '__main__':
             mytracker = tools.ObjectTracker(VICON_TRACKER_IP)
             current_time = time.time()
             prev_time = current_time
-
+            
             y_tracker = 0
         
             
@@ -205,12 +207,13 @@ if __name__ == '__main__':
                 elapsed_time = current_time - start_time
                 
                 
-                C = current_pos
-                x = np.array([current_pos[0],current_vel[0], current_pos[1],current_vel[1], current_pos[2],current_vel[2]])
+            
+                x = np.array([current_pos[0],current_vel[0], current_pos[1],current_vel[1], current_pos[5],current_vel[5]])
+                Cx = np.array([current_pos[0], current_pos[1], current_pos[5]])
                 
                 # calculate the control output
                 
-                y_tracker += Kr @ (reference - (C @ x))
+                y_tracker += Kr @ (reference - Cx)
                 #  Try without reference tracking first!
                 u = -Kx @ x #+ y_tracker
                 print("WRENCH CONTROLL:", u)
@@ -244,17 +247,19 @@ if __name__ == '__main__':
                 
                 yawrate = 0
                 
-                print("Control input: ", [roll_1, pitch_1, yawrate, height],'\n')
+                print("Control input1: ", [math.degrees(roll_1), math.degrees(pitch_1), yawrate, height],'\n')
+                print("Control input1: ", [math.degrees(roll_2), math.degrees(pitch_2), yawrate, height],'\n')
                 
                 # send to drones
                 args_dict = {
-                    uris[0]: [roll_1, pitch_1, yawrate, height],
-                    uris[1]: [roll_2, pitch_2, yawrate, height],
+                    uris[0]: [math.degrees(roll_1), math.degrees(pitch_1), yawrate, height],
+                    uris[1]: [math.degrees(roll_2), math.degrees(pitch_2), yawrate, height],
                 }
                 swarm.parallel_safe(update_controller, args_dict = args_dict)
 
                 x_history.append(x)
                 u_history.append(u)
+                timeT.append(elapsed_time)
 
                 
 
@@ -271,23 +276,23 @@ if __name__ == '__main__':
     u_history = np.array(u_history)
     ref_history = np.array(ref_history)
     # Print final state and control input
-    print("Final state:", x)
-    print("Final control input:", u)
+    # print("Final state:", x)
+    # print("Final control input:", u)
 
     # Plotting the results
     plt.figure(figsize=(12, 6))
 
     # Plot state response
-    plt.subplot(3, 1, 1)
-    plt.plot(time, x_history)
+    plt.subplot(2, 1, 1)
+    plt.plot(timeT, x_history)
     plt.title('State Response')
     plt.xlabel('Time (s)')
     plt.ylabel('State')
     plt.legend(['x1', 'x_vel', 'y','y_vel','phi','phi_vel'])  # Adjust legend based on the number of states
 
     # Plot control input
-    plt.subplot(3, 1, 2)
-    plt.plot(time, u_history)
+    plt.subplot(2, 1, 2)
+    plt.plot(timeT, u_history)
     plt.title('Control Input')
     plt.xlabel('Time (s)')
     plt.ylabel('Control Input')
@@ -295,11 +300,11 @@ if __name__ == '__main__':
 
     # plot ref signal
     plt.subplot(3, 1, 3)
-    plt.plot(time, ref_history)
-    plt.title('Reference Signal')
-    plt.xlabel('Time (s)')
-    plt.ylabel('Reference Signal')
-    plt.legend(['x', 'y', 'phi'])  # Adjust legend based on the number of inputs
+    # plt.plot(timeT, ref_history)
+    # plt.title('Reference Signal')
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Reference Signal')
+    # plt.legend(['x', 'y', 'phi'])  # Adjust legend based on the number of inputs
 
     plt.tight_layout()
     plt.show()  
