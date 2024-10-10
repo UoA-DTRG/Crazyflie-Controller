@@ -220,8 +220,8 @@ if __name__ == '__main__':
                 for i in range(len(current_vel)):
                     if abs(current_vel[i]) > VELOCITY_THRESHOLD:
                         current_vel[i] = prev_vel[i]  # Ignore the current velocity component if it exceeds the threshold
-                print("POS:" ,current_pos ,'\n')
-                print("VEL:", current_vel,'\n')
+                # print("POS:" ,current_pos ,'\n')
+                # print("VEL:", current_vel,'\n')
                 prev_pos = current_pos
                 prev_vel = current_vel
                 current_time = time.time()
@@ -233,10 +233,10 @@ if __name__ == '__main__':
                 
                 # calculate the control output
                 
-                y_tracker += Kr @ (reference - Cx)
+                y_tracker += (Kr @ (reference - Cx))*d_time
                 #  Try without reference tracking first!
                 u = -Kx @ x #+ y_tracker
-                print("WRENCH CONTROLL:", u)
+                # print("WRENCH CONTROLL:", u)
                 yaw = current_pos[5]
 
 
@@ -280,12 +280,9 @@ if __name__ == '__main__':
                 
                 pitch_1 = -0.125*(by_1 - moment_z)
                 pitch_2 = -0.125*(by_2 + moment_z)
-                
-
-                
-                
-                print("Control input1: ", [math.degrees(roll_1), math.degrees(pitch_1), math.degrees(yawrate2), height],'\n')
-                print("Control input1: ", [math.degrees(roll_2), math.degrees(pitch_2), math.degrees(yawrate1), height],'\n')
+            
+                # print("Control input1: ", [math.degrees(roll_1), math.degrees(pitch_1), math.degrees(yawrate2), height],'\n')
+                # print("Control input1: ", [math.degrees(roll_2), math.degrees(pitch_2), math.degrees(yawrate1), height],'\n')
                 
                 # send to drones
                 args_dict = {
@@ -299,8 +296,8 @@ if __name__ == '__main__':
                 timeT.append(elapsed_time)
                 setpoint_history.append([math.degrees(roll_1), math.degrees(pitch_1),math.degrees(roll_2), math.degrees(pitch_2)])
 
-                
-                time.sleep(0.01) # 100hz
+                print(d_time)
+                time.sleep(0.0001) # 100hz
 
             swarm.parallel_safe(land)
         except Exception as e:
