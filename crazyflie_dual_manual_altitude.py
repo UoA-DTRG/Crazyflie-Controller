@@ -25,6 +25,10 @@ REF = np.array([0, 0, 0])  # reference state
 height = 0.6
 
 
+yaw1_offset = 0
+yaw2_offset = 0
+
+
 def light_check(scf):
     def activate_led_bit_mask(scf):
         scf.cf.param.set_value('led.bitmask', 255)
