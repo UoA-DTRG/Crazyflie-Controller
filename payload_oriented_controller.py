@@ -11,6 +11,9 @@ from pyvicon_datastream import tools
 import math 
 import matplotlib.pyplot as plt
 
+import cProfile
+import pstats
+
 from queue import Queue
 import threading
 from collections import namedtuple
@@ -74,7 +77,9 @@ def light_check(scf):
 
 
 def control_thread():
-    
+    # begins profiling for the control thread for performance analysis
+    pr = cProfile.Profile()
+    pr.enable()
     
     vicon_client = pv.PyViconDatastream()
     ret = vicon_client.connect(VICON_TRACKER_IP)
@@ -294,6 +299,12 @@ def control_thread():
             ctrl.put(Quit())
         print(traceback.format_exc())
 
+    # ends profiling for the control thread and prints the results
+    pr.disable()
+    stats = pstats.Stats(pr)
+    stats.sort_stats(pstats.SortKey.CUMULATIVE)
+    stats.print_stats()
+
 def update_crazy_controller(scf):
     control = controlQueues[uris.index(scf.cf.link_uri)]
     while True:
@@ -356,23 +367,23 @@ if __name__ == '__main__':
         
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
-    
+
     with Swarm(uris, factory=factory) as swarm:
-        try:    
+        try:
             swarm.parallel_safe(light_check)
             swarm.reset_estimators()
-            
+
             threading.Thread(target=control_thread).start()
 
             swarm.parallel_safe(update_crazy_controller)
-            
+
         except Exception as e:
             swarm.parallel_safe(stop)
             print(traceback.format_exc())
         
     pygame.quit()
     # Convert results to numpy arrays for easier handling
-    
+
     x_history = np.array(x_history)
     u_history = np.array(u_history)
     ref_history = np.array(ref_history)
