@@ -35,7 +35,7 @@ class ViconInterface():
 
         # Bind the listener 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.-((udp_ip, udp_port))
+        self.sock.bind((udp_ip, udp_port))
 
         # Used to time packet frequency to ensure FPS
         self.time_last_packet = 0
@@ -105,7 +105,7 @@ class ViconInterface():
 
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
-        
+            pass
         finally:
             self.sock.close()
 
