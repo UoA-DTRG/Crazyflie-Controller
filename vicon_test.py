@@ -1,45 +1,24 @@
 import time
-import pyvicon_datastream as pv
-from pyvicon_datastream import tools
+
 import numpy as np
 import math 
+from vicon_connection_class import ViconInterface as vi
 
-VICON_TRACKER_IP = "192.168.10.1"
 OBJECT_NAME = "AtlasCrazyflie"
 
-vicon_client = pv.PyViconDatastream()
-ret = vicon_client.connect(VICON_TRACKER_IP)
-mytracker = tools.ObjectTracker(VICON_TRACKER_IP)
 
-if ret != pv.Result.Success:
-    print(f"Connection to {VICON_TRACKER_IP} failed")
-else:
-    print(f"Connection to {VICON_TRACKER_IP} successful")
+try:
+    vicon = vi()
+    vicon_thread = Thread(target=vicon.main_loop)
 
+    vicon_thread.start()
 
-def get_pos(position, current_pos):
-    if len(position[2]) > 0:
-        obj_data = position[2][0]
-        x, y, z = obj_data[2], obj_data[3], obj_data[4]
-        x_rot, y_rot, z_rot  = math.degrees(obj_data[5]), math.degrees(obj_data[6]), math.degrees(obj_data[7])
-        return np.array([x/1000, y/1000, z/1000, x_rot, y_rot, z_rot])
-    else:
-        return current_pos
+    while True:
 
-current_pos = np.array([0,0,0,0,0,0])
-prev_pos = np.array([0,0,0,0,0,0])
+        print(vicon.getLatestNED(OBJECT_NAME))
+        time.sleep(0.05)
 
-current_pos = get_pos(mytracker.get_position(OBJECT_NAME), current_pos)
-prev_pos = current_pos
-mytracker = tools.ObjectTracker(VICON_TRACKER_IP)
-current_time = time.time()
-prev_time = current_time
-
-while(True):
-    d_time = time.time() - current_time
-    current_pos = get_pos(mytracker.get_position(OBJECT_NAME), current_pos)
-    current_vel = (np.subtract(current_pos,prev_pos)) / d_time
-    print("POS:" ,current_pos,"\n")
-    prev_pos = current_pos
-    current_time = time.time()
-    time.sleep(0.05)
+except KeyboardInterrupt:
+    pass
+except Exception as e:
+    print(e)
