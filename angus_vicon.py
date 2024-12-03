@@ -35,7 +35,7 @@ class ViconInterface():
 
         # Bind the listener 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.-((udp_ip, udp_port))
+        self.sock.bind((udp_ip, udp_port))
 
         # Used to time packet frequency to ensure FPS
         self.time_last_packet = 0
@@ -105,7 +105,7 @@ class ViconInterface():
 
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
-        
+            pass
         finally:
             self.sock.close()
 
@@ -122,10 +122,10 @@ def main():
     vicon_recv_state_last = False
 
     # VICON name of object to track (drone)
-    object_track = 'sticks'
+    object_track = 'mug'
 
     # For when gui conneceoxts
-    gui_last_state = False
+    # gui_last_state = False
     
     try:
         vicon = ViconInterface()
@@ -140,14 +140,11 @@ def main():
                 vicon_recv_state_last = vicon.have_recv_packet
 
 
-            # if ready to send a position estimite
-            if(time.time() - postion_estimate_last_send > postion_estimate_period):
-                # Get latest position from vicon
-                curr_pos = vicon.getLatestNED(object_track)
+            curr_pos = vicon.getLatestNED(object_track)
 
-                if(curr_pos is not None):
+            if(curr_pos is not None):
 
-                    print(curr_pos)
+                print(curr_pos)
             
     except KeyboardInterrupt:
         pass
@@ -156,7 +153,7 @@ def main():
 
     finally:
         vicon.end()
-        gui.end()
+        # gui.end()
 
 if(__name__ == '__main__'):
     main()

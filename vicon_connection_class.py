@@ -32,7 +32,7 @@ class ViconInterface():
 
         # Bind the listener 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.-((udp_ip, udp_port))
+        self.sock.bind((udp_ip, udp_port))
 
         # Used to time packet frequency to ensure FPS
         self.time_last_packet = 0
@@ -87,27 +87,49 @@ class ViconInterface():
                         #data_string = str(data)
 
                         # Rotate to NED
-                        ned_x = (data[1] / 1000) # ned x = vicon y
-                        ned_y = (data[0] / 1000) # ned y = vicon x
-                        ned_z = -(data[2] / 1000) # ned z = - vicon z
+                        x = (data[0] / 1000) # DEPRECATED: ned x = vicon y
+                        y = (data[1] / 1000) # DEPRECATED: ned y = vicon x
+                        z = (data[2] / 1000) # DEPRECATED: ned z = - vicon z
 
-                        ned_yaw = -(data[5]) # yaw inverted
-                        ned_roll = data[4]
-                        ned_pitch = data[3] # pitch inverted
+                        yaw = (data[5]) # DEPRECATED: yaw inverted
+                        roll = data[3]
+                        pitch = data[4] # DEPRECATED: pitch inverted
+                        
+                        if name in self.tracked_object:    
+                            x_vel = (x - self.tracked_object[name][0])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+                            y_vel = (y - self.tracked_object[name][1])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+                            z_vel = (z - self.tracked_object[name][2])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
 
+                            roll_rate = (((roll - self.tracked_object[name][3]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+                            pitch_rate = (((pitch - self.tracked_object[name][4]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+                            yaw_rate = (((yaw - self.tracked_object[name][5]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+                        else:
+                            x_vel = 0
+                            y_vel = 0
+                            z_vel = 0
+                            roll_rate = 0
+                            pitch_rate = 0
+                            yaw_rate = 0
+                            
                         self.have_recv_packet = True
 
                         # Store in public variable 
-                        self.tracked_object[name] = [ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw]
+                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, datetime.now()]
 
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
-        
+            pass
         finally:
             self.sock.close()
-
-    def getLatestNED(self, name):
+        
+    def getPos(self, name):
         try:
-            return self.tracked_object[name]
-        except:
+            return self.tracked_object[name][0:6]
+        except Exception as e:
+            return None
+        
+    def getVel(self, name):
+        try:
+            return self.tracked_object[name][6:12]
+        except Exception as e:
             return None
