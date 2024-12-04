@@ -5,6 +5,8 @@ from cflib.crazyflie.swarm import CachedCfFactory# type: ignore
 from cflib.crazyflie.swarm import Swarm# type: ignore
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie import syncCrazyflie# type: ignore
+from udp_client import UDP_Client
+
 import traceback
 import math 
 import matplotlib.pyplot as plt
@@ -100,7 +102,11 @@ def control_thread():
 
     # Write an informational log message
     logging.info('Log started')
-    
+
+    # creates the udp client for plotting
+    client = UDP_Client()
+
+
     roll = 0
     pitch = 0
 
@@ -222,6 +228,10 @@ def control_thread():
             # controlQueues[1].put(Altitude(math.degrees(0), math.degrees(0), math.degrees(yaw), height)) #PBODY LEFT
             
             # print(d_time)
+            client.send({OBJECT_NAME: {
+                "position": {"x": current_pos[0],"y": current_pos[1], "z": current_pos[2]},
+                "attitude": {"roll": current_pos[3],"pitch": current_pos[4],"yaw": current_pos[5]}}
+            })
             time.sleep(0.0011) # just under 100hz
         
         controlQueues[0].put(Land(3))
