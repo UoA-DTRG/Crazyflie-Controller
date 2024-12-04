@@ -1,12 +1,10 @@
-# requirements.txt
-
 asttokens==2.4.1
 attrs==24.1.0
 backcall==0.2.0
 beautifulsoup4==4.12.3
 bleach==6.1.0
 certifi==2024.7.4
--e git+https://github.com/bitcraze/crazyflie-lib-python.git@c7eaabe31612e796fcdcf8511c18d197051e17cd#egg=cflib
+-e git+https://github.com/bitcraze/crazyflie-lib-python.git@6b4d3ba185026bcb9556528723b757456c94f7f3#egg=cflib&subdirectory=../../cflib
 charset-normalizer==3.3.2
 contourpy==1.3.0
 control==0.10.1
@@ -38,7 +36,8 @@ nbclient==0.10.0
 nbconvert==7.16.4
 nbformat==5.10.4
 numpy==1.26.4
-packaging==24.1
+orjson==3.10.12
+packaging==24.2
 pandocfilters==1.5.1
 parso==0.8.4
 pexpect==4.9.0
@@ -63,7 +62,7 @@ pyzmq==26.1.0
 referencing==0.35.1
 requests==2.32.3
 rpds-py==0.19.1
-scipy==1.13.0
+scipy==1.14.1
 six==1.16.0
 soupsieve==2.5
 stack-data==0.6.3
