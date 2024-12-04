@@ -5,6 +5,8 @@ from cflib.crazyflie.swarm import CachedCfFactory# type: ignore
 from cflib.crazyflie.swarm import Swarm# type: ignore
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie import syncCrazyflie# type: ignore
+from udp_client import UDP_Client
+
 import traceback
 import math 
 import matplotlib.pyplot as plt
@@ -12,6 +14,9 @@ from vicon_connection_class import ViconInterface as vi
 
 import cProfile
 import pstats
+import logging
+from logging.handlers import RotatingFileHandler
+
 
 from queue import Queue
 import threading
@@ -76,9 +81,32 @@ def control_thread():
     vicon = vi()
     vicon_thread = threading.Thread(target=vicon.main_loop)
     vicon_thread.start()
-    
-    
-    
+
+
+    logger = logging.getLogger('crazyflie_yaw_test')
+    logger.setLevel(logging.INFO)
+
+    # Set up a rotating file handler
+    handler = RotatingFileHandler(
+        'app.log',  # Log file name
+        maxBytes=100000,  # Maximum size of a log file in bytes before rotation
+        backupCount=3  # Number of backup files to keep
+    )
+
+    # Optional: Set a formatter for the log messages
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+
+    # Add the handler to the logger
+    logger.addHandler(handler)
+
+    # Write an informational log message
+    logging.info('Log started')
+
+    # creates the udp client for plotting
+    client = UDP_Client()
+
+
     roll = 0
     pitch = 0
 
@@ -114,6 +142,7 @@ def control_thread():
             print('waiting')
         
         print("Starting flight")
+        logging.info('Starting flight')
         
      
         
@@ -160,7 +189,9 @@ def control_thread():
                 if event.type == pygame.JOYBUTTONDOWN:
                     if event.button == 1:  # B button
                         flying = False
+                        logging.info('Flight disabled (B Button)')
                     if event.button == 3:  # Y button
+                        logging.info('Emergency Stop (Y Button)')
                         raise Exception('Manual Emegency Stop') # emergency stop
             
         
@@ -173,10 +204,26 @@ def control_thread():
             elapsed_time = current_time - start_time
             
             # send to drones
-            controlQueues[0].put(Altitude(max(min(math.degrees(current_pos[3])/10,15),-15), max(min(math.degrees(current_pos[4])/10,15),-15), math.degrees(current_pos[5]), height)) #ATLAS RIGHT
+            # Breaking down the control queue put operation into smaller parts
+            roll_angle = math.degrees(current_pos[3]) / 10
+            pitch_angle = math.degrees(current_pos[4]) / 10
+            yaw_rate = math.degrees(current_pos[5])
+
+            # Clamping the angles to the range [-15, 15]
+            clamped_roll = max(min(roll_angle, 15), -15)
+            clamped_pitch = max(min(pitch_angle, 15), -15)
+
+            # Putting the Altitude command into the control queue
+            controlQueues[0].put(Altitude(clamped_roll, clamped_pitch, yaw_rate, height))  # ATLAS RIGHT
+
+            # controlQueues[0].put(Altitude(max(min(math.degrees(current_pos[3])/10,15),-15), max(min(math.degrees(current_pos[4])/10,15),-15), math.degrees(current_pos[5]), height)) #ATLAS RIGHT
             # controlQueues[1].put(Altitude(math.degrees(0), math.degrees(0), math.degrees(yaw), height)) #PBODY LEFT
             
             # print(d_time)
+            client.send({OBJECT_NAME: {
+                "position": {"x": current_pos[0],"y": current_pos[1], "z": current_pos[2]},
+                "attitude": {"roll": current_pos[3],"pitch": current_pos[4],"yaw": current_pos[5]}}
+            })
             time.sleep(0.0011) # just under 100hz
         
         controlQueues[0].put(Land(3))
@@ -185,6 +232,7 @@ def control_thread():
         for ctrl in controlQueues:
             ctrl.put(Quit())
         print(traceback.format_exc())
+        logging.exception(traceback.format_exc())
     finally:
         vicon.end()
     
