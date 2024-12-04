@@ -41,7 +41,7 @@ height = 0.6
 # Possible commands, all times are in seconds
 Takeoff = namedtuple('Takeoff', ['height', 'time'])
 Land = namedtuple('Land', ['time'])
-Altitude = namedtuple('Goto', ['roll', 'pitch', 'yawrate', 'altitude'])
+Altitude = namedtuple('Goto', ['roll', 'pitch', 'yaw', 'altitude'])
 # Reserved for the control loop, do not use in sequence
 Quit = namedtuple('Quit', [])
 
@@ -167,19 +167,11 @@ def control_thread():
             d_time = time.time() - current_time
             # update states
             current_pos = get_pos(vicon.getPos(OBJECT_NAME), current_pos) - offset
-                       
+            
             current_vel = vicon.getVel(OBJECT_NAME)
             current_time = time.time()
             elapsed_time = current_time - start_time
             
-            # #yaw P control (hopefully works well enough)
-            # left_drone_pos = get_pos(mytracker.get_position(LEFT_DRONE_NAME), left_drone_pos) - left_drone_offset
-            # right_drone_pos = get_pos(mytracker.get_position(RIGHT_DRONE_NAME), right_drone_pos) - right_drone_offset
-            # yawrate1 = 1.4 * (x[4] - left_drone_pos[5])
-            # yawrate2 = 1.4 * (x[4] - right_drone_pos[5])
-            # yaw_track_history.append([math.degrees(left_drone_pos[5]),math.degrees(right_drone_pos[5]), math.degrees(x[4])])
-            # yaw_history.append([math.degrees(yawrate1), math.degrees(yawrate2)])
-               
             # send to drones
             controlQueues[0].put(Altitude(max(min(math.degrees(current_pos[3])/10,15),-15), max(min(math.degrees(current_pos[4])/10,15),-15), math.degrees(current_pos[5]), height)) #ATLAS RIGHT
             # controlQueues[1].put(Altitude(math.degrees(0), math.degrees(0), math.degrees(yaw), height)) #PBODY LEFT
@@ -223,7 +215,7 @@ def update_crazy_controller(scf):
             scf.cf.high_level_commander.land(0.0, command.time)
             time.sleep(0.1)
         elif type(command) is Altitude:
-            scf.cf.commander.send_position_setpoint(0.0, 0.0 ,command.altitude, command.yawrate)
+            scf.cf.commander.send_custom_altitude_setpoint(0.0, 0.0 ,command.yaw, command.altitude, )
         else:
             scf.cf.high_level_commander.stop()
             time.sleep(0.1)
