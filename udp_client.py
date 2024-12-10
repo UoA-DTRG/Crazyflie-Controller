@@ -7,7 +7,7 @@ import math
 class UDP_Client:
     """send data to UDP server, used for plotting with plotjuggler"""
 
-    def __init__(self, host: str = "10.104.144.161", port: int = 5005):
+    def __init__(self, host: str = "127.0.0.1", port: int = 5005):
         self.start_time = time.time()
         self._host = host
         self._port = port

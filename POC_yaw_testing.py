@@ -205,24 +205,27 @@ def control_thread():
             
             # send to drones
             # Breaking down the control queue put operation into smaller parts
-            roll_angle = math.degrees(current_pos[3]) / 10
-            pitch_angle = math.degrees(current_pos[4]) / 10
-            yaw_rate = math.degrees(current_pos[5])
+            roll_angle = math.degrees(current_pos[3]) / 5
+            pitch_angle = math.degrees(current_pos[4]) / 5
+            yaw = math.degrees(current_pos[5])
 
             # Clamping the angles to the range [-15, 15]
-            clamped_roll = max(min(roll_angle, 15), -15)
-            clamped_pitch = max(min(pitch_angle, 15), -15)
+            clamped_roll = max(min(roll_angle, 10), -10)
+            clamped_pitch = max(min(pitch_angle, 10), -10)
 
             # Putting the Altitude command into the control queue
-            controlQueues[0].put(Altitude(clamped_roll, clamped_pitch, yaw_rate, height))  # ATLAS RIGHT
+            controlQueues[0].put(Altitude(clamped_pitch, clamped_roll, yaw, height))  # ATLAS RIGHT
 
             # controlQueues[0].put(Altitude(max(min(math.degrees(current_pos[3])/10,15),-15), max(min(math.degrees(current_pos[4])/10,15),-15), math.degrees(current_pos[5]), height)) #ATLAS RIGHT
             # controlQueues[1].put(Altitude(math.degrees(0), math.degrees(0), math.degrees(yaw), height)) #PBODY LEFT
             
             # print(d_time)
-            client.send({OBJECT_NAME: {
-                "position": {"x": current_pos[0],"y": current_pos[1], "z": current_pos[2]},
-                "attitude": {"roll": current_pos[3],"pitch": current_pos[4],"yaw": current_pos[5]}}
+            client.send({
+                OBJECT_NAME: {
+                    "position": {"x": float(current_pos[0]),"y": float(current_pos[1]), "z": float(current_pos[2])},
+                    "attitude": {"roll": float(current_pos[3]),"pitch": float(current_pos[4]),"yaw": float(current_pos[5])},
+                    "setpoint": {"clamped roll": float(clamped_pitch),"clamped pitch": float(clamped_roll),"yaw": float(yaw)}
+                }
             })
             time.sleep(0.0011) # just under 100hz
         
@@ -235,6 +238,7 @@ def control_thread():
         logging.exception(traceback.format_exc())
     finally:
         vicon.end()
+        client.close()
     
     
 
@@ -263,7 +267,7 @@ def update_crazy_controller(scf):
             scf.cf.high_level_commander.land(0.0, command.time)
             time.sleep(0.1)
         elif type(command) is Altitude:
-            scf.cf.commander.send_custom_altitude_setpoint(0.0, 0.0 ,command.yaw, command.altitude, )
+            scf.cf.commander.send_custom_altitude_setpoint(command.roll, command.pitch ,command.yaw, command.altitude)
         else:
             scf.cf.high_level_commander.stop()
             time.sleep(0.1)

@@ -26,6 +26,7 @@ def plot_update(frame):
         line.set_xdata(range(len(last_values)))
         ax.relim()
         ax.autoscale_view()
+        print(vel)
     return line,
 
 vicon = vi()
