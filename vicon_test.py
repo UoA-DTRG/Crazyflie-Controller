@@ -7,7 +7,7 @@ from datetime import datetime as dt
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-OBJECT_NAME = "mug"
+OBJECT_NAME = "crazyfliePayload"
 
 # Initialize variables for plotting
 last_values = []

@@ -38,6 +38,7 @@ beam_length = 0.4
 
 uris = [
     'radio://0/80/2M/E7E7E7E7E7', #Atlas ON THE RIGHT
+    'radio://0/81/2M/E6E7E6E7E6', #P-Body ON THE LEFT\
 ]
 
 reference = np.array([0, 0, 0])  # reference state
@@ -143,13 +144,12 @@ def control_thread():
         
         print("Starting flight")
         logging.info('Starting flight')
-        
-     
-        
+            
         
         # takeoff 3 seconds
-        controlQueues[0].put(Takeoff( height, 3))
-        # controlQueues[1].put(Takeoff( height, 3))
+        controlQueues[0].put(Takeoff(height, 3))
+        controlQueues[1].put(Takeoff(height, 3))
+        
         time.sleep(3)
         
         flying = True
@@ -214,9 +214,11 @@ def control_thread():
             clamped_pitch = max(min(pitch_angle, 10), -10)
 
             # Putting the Altitude command into the control queue
-            controlQueues[0].put(Altitude(clamped_pitch, clamped_roll, yaw, height))  # ATLAS RIGHT
+            controlQueues[0].put(Altitude(clamped_pitch, clamped_roll, yaw, height))  # ATLAS RIGHT  
+            controlQueues[1].put(Altitude(clamped_pitch, clamped_roll, yaw, height))  # PBODY LEFT         
+          
 
-            # controlQueues[0].put(Altitude(max(min(math.degrees(current_pos[3])/10,15),-15), max(min(math.degrees(current_pos[4])/10,15),-15), math.degrees(current_pos[5]), height)) #ATLAS RIGHT
+
             # controlQueues[1].put(Altitude(math.degrees(0), math.degrees(0), math.degrees(yaw), height)) #PBODY LEFT
             
             # print(d_time)
@@ -230,6 +232,9 @@ def control_thread():
             time.sleep(0.0011) # just under 100hz
         
         controlQueues[0].put(Land(3))
+        controlQueues[1].put(Land(3))
+
+        
         # controlQueues[1].put(Land(3))
     except Exception as e:
         for ctrl in controlQueues:
