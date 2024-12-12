@@ -9,6 +9,7 @@ import traceback
 import math 
 import matplotlib.pyplot as plt
 from vicon_connection_class import ViconInterface as vi
+from timed_queue import TimedQueue
 import cProfile
 import pstats
 import logging
@@ -355,7 +356,7 @@ def get_pos(position, current_pos):
         print('LOST SIGHT OF OBJECT')
 
 if __name__ == '__main__':
-    controlQueues = [Queue() for _ in range(len(uris))]
+    controlQueues = [TimedQueue() for _ in range(len(uris))]
         
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
