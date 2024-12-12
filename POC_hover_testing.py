@@ -167,6 +167,9 @@ def control_thread():
 
         while flying:
                 
+                
+            time.sleep(0.01) #
+
             # safety timeout
             elapsed_time = time.time() - start_time
 
@@ -200,7 +203,7 @@ def control_thread():
             
             ## split the sum of forces into the the agents compomonents
             HT_thrusts = np.array([u[0], u[1]])
-            moment_z = u[2]/(2*beam_length)
+            moment_z = 0.1* u[2]/(2*beam_length)
             
             rot_matrix = np.array([[np.cos(yaw), np.sin(yaw)],
                 [-np.sin(yaw), np.cos(yaw)]])
@@ -213,11 +216,11 @@ def control_thread():
             by_1 = 0.5 * by_thrust
             by_2 = 0.5 * by_thrust 
             
-            roll_1 = 0.01436332*bx_1
-            roll_2 = 0.01436332*bx_2
+            roll_1 = 0.46436332*bx_1
+            roll_2 = 0.46436332*bx_2
             
-            pitch_1 = -0.01436332*(-by_1 - moment_z) # right one
-            pitch_2 = -0.01436332*(-by_2 + moment_z) # left one
+            pitch_1 = 0.46436332*(-by_1 - moment_z) # right one
+            pitch_2 = 0.46436332*(-by_2 + moment_z) # left one
             
             # send to drones
             # Breaking down the control queue put operation into smaller parts
@@ -232,8 +235,8 @@ def control_thread():
             c_pitch_2 = max(min(pitch_2, 10), -10)
 
             # Putting the Altitude command into the control queue
-            controlQueues[0].put(Altitude(c_roll_1, c_pitch_1,  yaw, height),block=False)  # ATLAS RIGHT
-            controlQueues[1].put(Altitude(c_roll_2, c_pitch_2, yaw, height),block=False)  # PBODY LEFT        
+            controlQueues[0].put(Altitude(c_roll_1, c_pitch_1,  yaw, height))  # ATLAS RIGHT
+            controlQueues[1].put(Altitude(c_roll_2, c_pitch_2, yaw, height))  # PBODY LEFT        
             
             client.send({
                 OBJECT_NAME: {
@@ -251,7 +254,6 @@ def control_thread():
                     "setpoint": {"clamped roll": float(c_roll_2),"clamped pitch": float(c_pitch_2),"yaw": float(yaw)}
                 },
             })
-            time.sleep(0.0019) # just OVER 50Hz
         
         controlQueues[0].put(Land(3))
         controlQueues[1].put(Land(3))
@@ -356,7 +358,9 @@ def get_pos(position, current_pos):
         print('LOST SIGHT OF OBJECT')
 
 if __name__ == '__main__':
-    controlQueues = [TimedQueue() for _ in range(len(uris))]
+    # controlQueues = [TimedQueue(0.1) for _ in range(len(uris))]
+    controlQueues = [Queue() for _ in range(len(uris))]
+
         
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')

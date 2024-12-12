@@ -36,7 +36,7 @@ class TimedQueue:
             self._queue.put((item, current_time))
             self._element_count += 1
 
-    def get(self, block: bool = True, timeout: float = None) -> Any:
+    def get(self, block: bool = True, timeout: float = None) -> any:
         """
         Retrieve and remove the next available task from the queue.
 
@@ -95,7 +95,7 @@ class TimedQueue:
                 self._element_count = temp_count
 
             # Sleep to prevent continuous CPU usage
-            time.sleep(1)
+            time.sleep(0.1)
 
     def close(self):
         """
