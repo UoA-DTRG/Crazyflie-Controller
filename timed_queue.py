@@ -23,7 +23,7 @@ class TimedQueue:
         self._timeout_thread = threading.Thread(target=self._timeout_monitor, daemon=True)
         self._timeout_thread.start()
 
-    def put(self, item: Any):
+    def put(self, item: any):
         """
         Put an item in the queue with timestamp tracking.
 
