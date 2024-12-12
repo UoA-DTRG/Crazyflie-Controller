@@ -5,39 +5,66 @@ from queue import Empty
 
 
 class TimedQueue:
-    def __init__(self, max_wait_time: int = 0.02):
+    def __init__(self, max_wait_time: int = 10):
         """
-        Thread-safe queue with timeout functionality.
+        Initialize a timed queue with reliable element tracking.
 
         :param max_wait_time: Maximum time (in seconds) a task can wait before being discarded
         """
         self._queue = queue.Queue()
         self._max_wait_time = max_wait_time
         self._stop_event = threading.Event()
+
+        # Thread-safe element tracking
+        self._lock = threading.Lock()
+        self._element_count = 0
+
+        # Timeout monitoring thread
         self._timeout_thread = threading.Thread(target=self._timeout_monitor, daemon=True)
         self._timeout_thread.start()
 
-    def put(self, item):
+    def put(self, item: Any):
         """
-        Thread-safe method to add an item to the queue.
+        Put an item in the queue with timestamp tracking.
 
         :param item: Task to be added to the queue
         """
-        self._queue.put((item, time.time()))
+        current_time = time.time()
 
-    def get(self, block=True, timeout=None):
+        # Use lock to ensure thread-safe counting
+        with self._lock:
+            self._queue.put((item, current_time))
+            self._element_count += 1
+
+    def get(self, block: bool = True, timeout: float = None) -> Any:
         """
-        Thread-safe method to retrieve an item from the queue.
+        Retrieve and remove the next available task from the queue.
 
         :param block: Whether to block if queue is empty
         :param timeout: Maximum time to wait for an item
         :return: The next task from the queue
-        :raises Empty: If no item is available and not blocking
+        :raises queue.Empty: If no item is available
         """
         try:
-            return self._queue.get(block=block, timeout=timeout)[0]
-        except Empty:
+            # Retrieve the item
+            item, _ = self._queue.get(block=block, timeout=timeout)
+
+            # Decrement the element count
+            with self._lock:
+                self._element_count -= 1
+
+            return item
+        except queue.Empty:
             raise
+
+    def qsize(self) -> int:
+        """
+        Get the current number of elements in the queue.
+
+        :return: Number of elements in the queue
+        """
+        with self._lock:
+            return self._element_count
 
     def _timeout_monitor(self):
         """
@@ -46,8 +73,9 @@ class TimedQueue:
         while not self._stop_event.is_set():
             current_time = time.time()
 
-            # Temporary list to hold tasks that should be kept
+            # Temporary queue and count for non-timed-out tasks
             temp_queue = queue.Queue()
+            temp_count = 0
 
             # Process the existing queue
             while not self._queue.empty():
@@ -57,11 +85,14 @@ class TimedQueue:
                     # Keep tasks that haven't exceeded the timeout
                     if current_time - task_timestamp <= self._max_wait_time:
                         temp_queue.put((task, task_timestamp))
+                        temp_count += 1
                 except queue.Empty:
                     break
 
-            # Replace the original queue with filtered tasks
-            self._queue = temp_queue
+            # Update queue and count atomically
+            with self._lock:
+                self._queue = temp_queue
+                self._element_count = temp_count
 
             # Sleep to prevent continuous CPU usage
             time.sleep(1)
