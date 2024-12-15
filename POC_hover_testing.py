@@ -26,15 +26,18 @@ OBJECT_NAME = "crazyfliePayload"
 LEFT_DRONE_NAME = "PbodyCrazyFlie"
 RIGHT_DRONE_NAME = "AtlasCrazyflie"
 
+# CONSTANTS
 YAW_THRESHOLD = 0.5
 VELOCITY_THRESHOLD = 0.75
 POSITION_THRESHOLD = 3.14
 WEIGHTING = 0.5
 beam_length = 0.4
+ANGLE_GAIN = 0.66436332
+
 
 uris = [
-    'radio://0/80/2M/E7E7E7E7E7', #Atlas ON THE RIGHT
-    'radio://0/81/2M/E6E7E6E7E6', #P-Body ON THE LEFT\
+    'radio://0/81/2M/E6E7E6E7E6', #P-Body ON THE RIGHT
+    'radio://0/80/2M/E7E7E7E7E7', #Atlas ON THE LEFT
 ]
 
 reference = np.array([0, 0, 0])  # reference state
@@ -47,20 +50,6 @@ Altitude = namedtuple('Goto', ['roll', 'pitch', 'yaw', 'altitude'])
 
 # Reserved for the control loop, do not use in sequence
 Quit = namedtuple('Quit', [])
-
-cap_limit = 0.12217305
-
-x_history = []
-u_history = []  
-ref_history = []
-full_history = []
-yaw_history = []
-yaw_track_history = []
-setpoint_history = []
-timeT = []
-
-yaw1_offset = 0
-yaw2_offset = 0
 
 # CONTROLLER SPECIFIC
 Kr = matrix = np.array([
@@ -76,21 +65,7 @@ Kx = np.array([
 ])
 
 
-
-def light_check(scf):
-    def activate_led_bit_mask(scf):
-        scf.cf.param.set_value('led.bitmask', 255)
-
-    def deactivate_led_bit_mask(scf):
-        scf.cf.param.set_value('led.bitmask', 0)
-    
-    activate_led_bit_mask(scf)
-    time.sleep(2)
-    deactivate_led_bit_mask(scf)
-    time.sleep(2)
- 
 def control_thread():
-   
     vicon = vi()
     vicon_thread = threading.Thread(target=vicon.main_loop)
     vicon_thread.start()
@@ -216,11 +191,11 @@ def control_thread():
             by_1 = 0.5 * by_thrust
             by_2 = 0.5 * by_thrust 
             
-            roll_1 = 0.46436332*bx_1
-            roll_2 = 0.46436332*bx_2
+            roll_1 = ANGLE_GAIN*bx_1
+            roll_2 = ANGLE_GAIN*bx_2
             
-            pitch_1 = 0.46436332*(-by_1 - moment_z) # right one
-            pitch_2 = 0.46436332*(-by_2 + moment_z) # left one
+            pitch_1 = ANGLE_GAIN*(-by_1 - moment_z) # right one
+            pitch_2 = ANGLE_GAIN*(-by_2 + moment_z) # left one
             
             # send to drones
             # Breaking down the control queue put operation into smaller parts
@@ -268,8 +243,6 @@ def control_thread():
     finally:
         vicon.end()
         client.close()
-    
-    
 
 def update_crazy_controller(scf):
     pr = cProfile.Profile()
@@ -303,11 +276,21 @@ def update_crazy_controller(scf):
 
             print('Warning! unknown command {} for uri {}'.format(command,
                                                                   cf.uri))
+
+def light_check(scf):
+    def activate_led_bit_mask(scf):
+        scf.cf.param.set_value('led.bitmask', 255)
+
+    def deactivate_led_bit_mask(scf):
+        scf.cf.param.set_value('led.bitmask', 0)
     
+    activate_led_bit_mask(scf)
+    time.sleep(2)
+    deactivate_led_bit_mask(scf)
+    time.sleep(2)
 
 def take_off(scf):
     commander= scf.cf.high_level_commander
-
     commander.takeoff(height, 2.0)
     time.sleep(3)
     
@@ -336,7 +319,6 @@ def set_params(scf):
     #                              cb=param_stab_est_callback)
     scf.cf.param.set_value(full_name, 1)
     
-
 # EMERGENCY STOP
 def stop(scf):
     commander= scf.cf.high_level_commander
@@ -361,7 +343,6 @@ if __name__ == '__main__':
     # controlQueues = [TimedQueue(0.1) for _ in range(len(uris))]
     controlQueues = [Queue() for _ in range(len(uris))]
 
-        
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
     
