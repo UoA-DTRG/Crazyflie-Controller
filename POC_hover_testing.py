@@ -32,8 +32,7 @@ VELOCITY_THRESHOLD = 0.75
 POSITION_THRESHOLD = 3.14
 WEIGHTING = 0.5
 beam_length = 0.4
-ANGLE_GAIN = 0.66436332
-
+ANGLE_GAIN = 0.0025
 
 uris = [
     'radio://0/81/2M/E6E7E6E7E6', #P-Body ON THE RIGHT
@@ -53,23 +52,24 @@ Quit = namedtuple('Quit', [])
 
 # CONTROLLER SPECIFIC
 Kr = matrix = np.array([
-    [3.46410161513777, -1.77635683940025e-15 , 9.69580370540695e-16],
-    [-1.33226762955019e-15, 3.46410161513776, 1.87943008165182e-15],
-    [-1.26082045570467e-13 ,1.83959217624210e-14 ,0.999999999999995]
+    [7.74596669241486, 3.90290685234868e-15, -5.39387322691404e-15],
+    [7.44974100818479e-14, 7.74596669241478, 1.20541330583716e-16],
+    [5.22027930123782e-13, -8.42403758360321e-15, 2.23606797749985]
 ])
 
 Kx = np.array([
-    [2.20073124711112  ,  0.699032773431331   , -1.44684744558436e-15  ,  2.22044604925031e-16   , 1.44487317823154e-15 ,   1.88088314185855e-16],
-    [-1.36236425151406e-15   , 7.19098461534927e-16  ,  2.20073124711111  ,  0.699032773431330  ,  1.87346911436869e-15  ,  6.17180657674190e-16],
-    [-5.14970241659517e-14  ,  -2.53198500656967e-14  ,  6.37121548776897e-15  ,  1.03094031648370e-15   , 0.462530140083379  ,  0.106465947992776]
+    [4.0898367022491, 1.0474258284534, 6.28354244785641e-15, 2.19803634741175e-15, -1.31209687720653e-14, -6.55619688832417e-15],
+    [4.10782519111308e-14, 9.28252107538873e-15, 4.08983670224906, 1.04742582845338, 5.10715691262296e-16, 4.01194439696842e-16],
+    [2.57508169822318e-13, 5.68437239740138e-14, -1.63918927664814e-14, -3.63858519782042e-15, 3.88713156765886, 2.26061675574834]
 ])
+
 
 
 def control_thread():
     vicon = vi()
     vicon_thread = threading.Thread(target=vicon.main_loop)
     vicon_thread.start()
-
+    print("starting vicon thread")
 
     logger = logging.getLogger('crazyflie_yaw_test')
     logger.setLevel(logging.INFO)
@@ -93,7 +93,6 @@ def control_thread():
 
     # creates the udp client for plotting
     client = UDP_Client()
-
 
     roll = 0
     pitch = 0
@@ -148,7 +147,7 @@ def control_thread():
             # safety timeout
             elapsed_time = time.time() - start_time
 
-            if elapsed_time > 20:
+            if elapsed_time > 40:
                 print("Timeout reached. Exiting loop.")
                 break
             
@@ -171,14 +170,19 @@ def control_thread():
             
             x = np.array([current_pos[0],current_vel[0], current_pos[1],current_vel[1], current_pos[5],current_vel[5]])
             Cx = np.array([current_pos[0], current_pos[1], current_pos[5]])
-            y_tracker += (Kr @ (reference - Cx))*d_time
-            #  Try without reference tracking first!
-            u = -Kx @ x #+ y_tracker
-            yaw = current_pos[5]
             
+            
+            y_tracker += (Kr @ (reference - Cx))*d_time*0.01
+            y_tracker = np.clip(y_tracker, -10, 10)
+            #  Try without reference tracking first!
+            stateReg = -Kx @ x
+            u = stateReg + y_tracker
+            
+            yaw = current_pos[5]
+
             ## split the sum of forces into the the agents compomonents
             HT_thrusts = np.array([u[0], u[1]])
-            moment_z = 0.1* u[2]/(2*beam_length)
+            moment_z = u[2]/(2*beam_length)
             
             rot_matrix = np.array([[np.cos(yaw), np.sin(yaw)],
                 [-np.sin(yaw), np.cos(yaw)]])
@@ -191,8 +195,8 @@ def control_thread():
             by_1 = 0.5 * by_thrust
             by_2 = 0.5 * by_thrust 
             
-            roll_1 = ANGLE_GAIN*bx_1
-            roll_2 = ANGLE_GAIN*bx_2
+            roll_1 = 10*ANGLE_GAIN*bx_1
+            roll_2 = 10*ANGLE_GAIN*bx_2
             
             pitch_1 = ANGLE_GAIN*(-by_1 - moment_z) # right one
             pitch_2 = ANGLE_GAIN*(-by_2 + moment_z) # left one
@@ -203,30 +207,41 @@ def control_thread():
             pitch_angle = math.degrees(current_pos[4]) / 5
             yaw = math.degrees(current_pos[5])
 
-            c_roll_1 = max(min(roll_1, 10), -10)
-            c_roll_2 = max(min(roll_2, 10), -10)
+            c_roll_1 = max(min(roll_1, 5), -5)
+            c_roll_2 = max(min(roll_2, 5), -5)
             
-            c_pitch_1 = max(min(pitch_1, 10), -10)
-            c_pitch_2 = max(min(pitch_2, 10), -10)
+            c_pitch_1 = max(min(pitch_1, 5), -5)
+            c_pitch_2 = max(min(pitch_2, 5), -5)
 
             # Putting the Altitude command into the control queue
             controlQueues[0].put(Altitude(c_roll_1, c_pitch_1,  yaw, height))  # ATLAS RIGHT
-            controlQueues[1].put(Altitude(c_roll_2, c_pitch_2, yaw, height))  # PBODY LEFT        
+            controlQueues[1].put(Altitude(c_roll_2, c_pitch_2, yaw, height))  # PBODY LEFT
             
+            atlas = vicon.getPos("AtlasCrazyflie") - offset
+            pbody = vicon.getPos("PbodyCrazyFlie") - offset
+            
+
             client.send({
                 OBJECT_NAME: {
                     "position": {"x": float(current_pos[0]),"y": float(current_pos[1]), "z": float(current_pos[2])},
-                    "attitude": {"roll": float(current_pos[3]),"pitch": float(current_pos[4]),"yaw": float(current_pos[5])},
+                    "attitude": {"roll": math.degrees(float(current_pos[3])),"pitch": math.degrees(float(current_pos[4])),"yaw": math.degrees(float(current_pos[5]))},
+                    "velocityT": {"x": float(current_vel[0]),"y": float(current_vel[1]), "z": float(current_vel[2])},
+                    "velocityR": {"roll": math.degrees(float(current_vel[3])),"pitch": math.degrees(float(current_vel[4])),"yaw": math.degrees(float(current_vel[5]))},
                 },
                 "CONTROLLER":{
                     "wrench": {"x": float(u[0]), "y": float(u[1]), "moment z": float(u[2])},
-                    "Queue Size": {"Atlas": controlQueues[0].qsize() , "P-Body":controlQueues[1].qsize() }  
+                    "Queue Size": {"Atlas": controlQueues[0].qsize() , "P-Body":controlQueues[1].qsize() },
+                    "controller Components": {"Reference Tracking x": float(y_tracker[0]),"Reference Tracking y": float(y_tracker[1]),"Reference Tracking z": float(y_tracker[2]), "State Regulation x": float(stateReg[0]),"State Regulation y": float(stateReg[1]),"State Regulation z": float(stateReg[2])},  
                 },
                 "ATLAS":{
-                    "setpoint": {"clamped roll": float(c_roll_1),"clamped pitch": float(c_pitch_1),"yaw": float(yaw)}
+                    "setpoint": {"clamped roll": float(c_roll_1),"clamped pitch": float(c_pitch_1),"yaw": float(yaw)},
+                    "position": {"x": float(atlas[0]),"y": float(atlas[1]), "z": float(atlas[2])},
+                    "attitude": {"roll": math.degrees(float(atlas[3])),"pitch": math.degrees(float(atlas[4])),"yaw": math.degrees(float(atlas[5]))},
                 },
                 "P-BODY":{
-                    "setpoint": {"clamped roll": float(c_roll_2),"clamped pitch": float(c_pitch_2),"yaw": float(yaw)}
+                    "setpoint": {"clamped roll": float(c_roll_2),"clamped pitch": float(c_pitch_2),"yaw": float(yaw)},
+                    "position": {"x": float(pbody[0]),"y": float(pbody[1]), "z": float(pbody[2])},
+                    "attitude": {"roll": math.degrees(float(pbody[3])),"pitch": math.degrees(float(pbody[4])),"yaw": math.degrees(float(pbody[5]))}
                 },
             })
         
@@ -240,6 +255,7 @@ def control_thread():
             ctrl.put(Quit())
         print(traceback.format_exc())
         logging.exception(traceback.format_exc())
+        print(e)
     finally:
         vicon.end()
         client.close()

@@ -6,46 +6,37 @@ from threading import Thread
 from datetime import datetime as dt
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from udp_client import UDP_Client
 
-OBJECT_NAME = "crazyfliePayload"
-
-# Initialize variables for plotting
-last_values = []
-max_points = 100  # Maximum number of points to display on the live plot
-
-def plot_update(frame):
-    global last_values
-    if True:
-        vel = vicon.getPos(OBJECT_NAME)
-        if vel:
-            last_value = vel[-1]  # Get the last element of the velocity list
-            last_values.append(last_value)
-            if len(last_values) > max_points:
-                last_values.pop(0)  # Maintain a fixed number of points in the list
-        line.set_ydata(last_values)
-        line.set_xdata(range(len(last_values)))
-        ax.relim()
-        ax.autoscale_view()
-        print(vel)
-    return line,
+OBJECT_NAME = "AtlasCrazyflie"
 
 vicon = vi()
 try:
     # Create the Vicon connection and start its thread
     vicon_thread = Thread(target=vicon.main_loop)
     vicon_thread.start()
+    # creates the udp client for plotting
+    client = UDP_Client()
 
-    # Set up the plot
-    fig, ax = plt.subplots()
-    ax.set_title("Live Plot of Last Velocity Component")
-    ax.set_xlabel("Time Steps")
-    ax.set_ylabel("Velocity")
-    line, = ax.plot([], [], lw=2)
-
-    # Animate the plot
-    ani = FuncAnimation(fig, plot_update, interval=5)
-    plt.show()
-
+    while True:
+        atlas = vicon.getPos("AtlasCrazyflie")
+        pbody = vicon.getPos("PbodyCrazyFlie")
+        current_pos = vicon.getPos("crazyfliePayload")
+        if atlas and pbody and current_pos:
+            client.send({
+                    "Payload": {
+                        "position": {"x": float(current_pos[0]),"y": float(current_pos[1]), "z": float(current_pos[2])},
+                        "attitude": {"roll": math.degrees(float(current_pos[3])),"pitch": math.degrees(float(current_pos[4])),"yaw": math.degrees(float(current_pos[5]))},
+                    },
+                    "ATLAS":{
+                        "position": {"x": float(atlas[0]),"y": float(atlas[1]), "z": float(atlas[2])},
+                        "attitude": {"roll": math.degrees(float(atlas[3])),"pitch": math.degrees(float(atlas[4])),"yaw": math.degrees(float(atlas[5]))},
+                    },
+                    "P-BODY":{
+                        "position": {"x": float(pbody[0]),"y": float(pbody[1]), "z": float(pbody[2])},
+                        "attitude": {"roll": math.degrees(float(pbody[3])),"pitch": math.degrees(float(pbody[4])),"yaw": math.degrees(float(pbody[5]))}
+                    },
+                })
 except KeyboardInterrupt:
     pass
 except Exception as e:
