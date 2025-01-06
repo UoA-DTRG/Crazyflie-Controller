@@ -14,6 +14,7 @@ import math
 from random import randint
 import queue
 from threading import Thread
+import traceback
 
 us_start = int(time.time() * 1000 * 1000)
     
@@ -56,7 +57,7 @@ class ViconInterface():
         try:
             while self.run_interface:
                 # Block until there is a packet
-                b, addr = self.sock.recvfrom(256)
+                b, addr = self.sock.recvfrom(512)
 
                 # First 5 bytes are the frame # and # of items in frame
                 FrameNumber = int.from_bytes(b[0:4], byteorder='little')
@@ -82,11 +83,11 @@ class ViconInterface():
                     if(ItemID == 0):
                         # Process it
                         name = str(ItemData[0:24], 'utf-8').strip('\x00')
-                        data = unpack( 'd d d d d d', b[32:80] )
+                        data = unpack( 'd d d d d d', ItemData[24:72])
+                        # data = unpack( 'd d d d d d', b[32:80] )
 
                         #data_string = str(data)
 
-                        # Rotate to NED
                         x = (data[0] / 1000) # DEPRECATED: ned x = vicon y
                         y = (data[1] / 1000) # DEPRECATED: ned y = vicon x
                         z = (data[2] / 1000) # DEPRECATED: ned z = - vicon z
@@ -121,7 +122,7 @@ class ViconInterface():
 
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
-            pass
+            print(traceback.format_exc())
         finally:
             self.sock.close()
         
@@ -129,6 +130,7 @@ class ViconInterface():
         try:
             return self.tracked_object[name][0:6]
         except Exception as e:
+            # full exception trace
             return None
         
     def getVel(self, name):
