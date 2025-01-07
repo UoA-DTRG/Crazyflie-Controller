@@ -32,7 +32,7 @@ VELOCITY_THRESHOLD = 0.75
 POSITION_THRESHOLD = 3.14
 WEIGHTING = 0.5
 beam_length = 0.4
-ANGLE_GAIN = 0.0025
+ANGLE_GAIN = 0.125
 
 uris = [
     'radio://0/81/2M/E6E7E6E7E6', #P-Body ON THE RIGHT
@@ -52,15 +52,15 @@ Quit = namedtuple('Quit', [])
 
 # CONTROLLER SPECIFIC
 Kr = matrix = np.array([
-    [7.74596669241481, -9.3450070596599e-16, 2.29855582236462e-14],
-    [8.90268782028994e-14, 7.74596669241488, 1.10001105189543e-14],
-    [-6.06718955124281e-14, -6.22719100884842e-14, 2.23606797749975]
+    [6.32455532033668, 2.41880777537484e-14, 4.08998723748041e-15],
+    [7.43122601668518e-15, 6.32455532033682, 1.200252060784e-14],
+    [1.23122937444873e-13, 2.22417409036572e-13, 2.2360679774997]
 ])
 
 Kx = np.array([
-    [3.64776318909655, 0.729803240936059, 2.16149264549422e-15, 9.67030726829479e-16, 3.26793980568312e-14, 4.31048504205666e-15],
-    [4.62685445512534e-14, 9.06219543850284e-15, 3.64776318909662, 0.729803240936073, 1.66928489868113e-14, 1.64697190268297e-15],
-    [-1.96494198487846e-14, 3.49741957658741e-14, -5.93211986013643e-14, 1.03226257814441e-14, 3.37462402861926, 0.310384343872639]
+    [7.98014383588308, 1.08170476894079, 2.89366502199017e-14, 3.61082914964563e-15, 2.65321013437022e-15, 5.63635504181119e-16],
+    [8.05553560053064e-15, 1.32987710680618e-15, 7.97820804051979, 1.07926253371592, 1.18504477743246e-14, 2.80303338611366e-15],
+    [2.41490555120369e-14, 2.04137746805318e-14, -2.68342463832672e-13, 1.41525908907125e-14, 1.87970255354093, 0.231047389827226]
 ])
 
 def control_thread():
@@ -170,7 +170,7 @@ def control_thread():
             Cx = np.array([current_pos[0], current_pos[1], current_pos[5]])
             
             
-            y_tracker += (Kr @ (reference - Cx))*d_time*0.01
+            y_tracker += (Kr @ (reference - Cx))*d_time
             y_tracker = np.clip(y_tracker, -10, 10)
             #  Try without reference tracking first!
             stateReg = -Kx @ x
@@ -185,7 +185,7 @@ def control_thread():
             rot_matrix = np.array([[np.cos(yaw), np.sin(yaw)],
                 [-np.sin(yaw), np.cos(yaw)]])
             
-            HT_thrusts = rot_matrix @ HT_thrusts
+            HT_thrusts = HT_thrusts @ rot_matrix
             bx_thrust = HT_thrusts[0]
             by_thrust = HT_thrusts[1]
             bx_1 = WEIGHTING * bx_thrust
@@ -201,8 +201,6 @@ def control_thread():
             
             # send to drones
             # Breaking down the control queue put operation into smaller parts
-            roll_angle = math.degrees(current_pos[3]) / 5
-            pitch_angle = math.degrees(current_pos[4]) / 5
             yaw = math.degrees(current_pos[5])
 
             c_roll_1 = max(min(roll_1, 5), -5)
@@ -228,6 +226,7 @@ def control_thread():
                 },
                 "CONTROLLER":{
                     "wrench": {"x": float(u[0]), "y": float(u[1]), "moment z": float(u[2])},
+                    "Rotated Thrusts": {"x" : float(HT_thrusts[0]), "y": float(HT_thrusts[1])},
                     "Queue Size": {"Atlas": controlQueues[0].qsize() , "P-Body":controlQueues[1].qsize() },
                     "controller Components": {"Reference Tracking x": float(y_tracker[0]),"Reference Tracking y": float(y_tracker[1]),"Reference Tracking z": float(y_tracker[2]), "State Regulation x": float(stateReg[0]),"State Regulation y": float(stateReg[1]),"State Regulation z": float(stateReg[2])},  
                 },
