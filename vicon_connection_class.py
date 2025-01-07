@@ -97,11 +97,21 @@ class ViconInterface():
                         pitch = data[4] # DEPRECATED: pitch inverted
                         
                         if name in self.tracked_object:
-                            yaw = self.tracked_object[name][5] + (((data[5] - self.tracked_object[name][5]+math.pi)%(2*math.pi))-math.pi)
-
+                            # yaw = self.tracked_object[name][5] + (((data[5] - self.tracked_object[name][5]+math.pi)%(2*math.pi))-math.pi)
+                            
+                            yawdiff = data[5] - self.tracked_object[name][5]
+                            if yawdiff > math.pi:
+                                yawdiff -= 2*math.pi
+                            elif yawdiff < -math.pi:
+                                yawdiff += 2*math.pi
+                            yaw = ((2*self.tracked_object[name][5]) + yawdiff)/2
+                            
                             x_vel = (x - self.tracked_object[name][0])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
                             y_vel = (y - self.tracked_object[name][1])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
                             z_vel = (z - self.tracked_object[name][2])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+
+                            x_vel = max(min(x_vel, 5), -5)
+                            y_vel = max(min(y_vel, 5), -5)
 
                             roll_rate = (((roll - self.tracked_object[name][3]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
                             pitch_rate = (((pitch - self.tracked_object[name][4]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
