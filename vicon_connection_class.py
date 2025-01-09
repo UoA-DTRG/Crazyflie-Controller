@@ -26,7 +26,7 @@ def micros():
 
 class ViconInterface():
 
-    def __init__(self, udp_ip="0.0.0.0", udp_port=51001, filter_frequency=50):
+    def __init__(self, udp_ip="0.0.0.0", udp_port=51001, filter_frequency=10):
         # Port and IP to bind UDP listener
         self.udp_port = udp_port
         self.udp_ip = udp_ip
@@ -54,6 +54,12 @@ class ViconInterface():
     def end(self):
         self.run_interface = False
         self.sock.close()
+
+    def lpf(self, prev_filtered, prev_value, value, dt):
+
+        alpha = (2 - dt * self.filter_frequency) / (2 + dt * self.filter_frequency)
+        beta = dt * self.filter_frequency / (2 + dt * self.filter_frequency)
+        return alpha * prev_filtered + beta * (prev_value + value)
         
     def main_loop(self):
         try:
@@ -100,17 +106,18 @@ class ViconInterface():
                         
                         if name in self.tracked_object:
                             # yaw = self.tracked_object[name][5] + (((data[5] - self.tracked_object[name][5]+math.pi)%(2*math.pi))-math.pi)
-                            
+                            l = 1
                             yawdiff = data[5] - self.tracked_object[name][5]
                             if yawdiff > math.pi:
                                 yawdiff -= 2*math.pi
                             elif yawdiff < -math.pi:
                                 yawdiff += 2*math.pi
-                            
-                            dt = (datetime.now()-self.tracked_object[name][12]).total_seconds()
-                            tau = dt / (2 * math.pi * self.filter_frequency)
-                            alpha = dt / (tau + dt)
-                            yaw = self.tracked_object[name][5] + (alpha * yawdiff)
+                            dt = (datetime.now()-self.tracked_object[name][-1]).total_seconds()
+                            yaw = self.lpf(self.tracked_object[name][5], self.tracked_object[name][17], data[5], dt)
+
+                            x = self.lpf(self.tracked_object[name][0], self.tracked_object[name][12], x, dt)
+                            y = self.lpf(self.tracked_object[name][1], self.tracked_object[name][13], y, dt)
+                            z = self.lpf(self.tracked_object[name][2], self.tracked_object[name][14], z, dt)
 
                             x_vel = (x - self.tracked_object[name][0])/(dt)
                             y_vel = (y - self.tracked_object[name][1])/(dt)
@@ -121,8 +128,9 @@ class ViconInterface():
 
                             roll_rate = (((roll - self.tracked_object[name][3]+math.pi)%(2*math.pi))-math.pi)/(dt)
                             pitch_rate = (((pitch - self.tracked_object[name][4]+math.pi)%(2*math.pi))-math.pi)/(dt)
-                            yaw_rate = (((data[5] - self.tracked_object[name][5]+math.pi)%(2*math.pi))-math.pi)/(dt)
+                            yaw_rate = (yaw - self.tracked_object[name][5])/dt
                         else:
+                            l = 2
                             yaw = data[5]
                             x_vel = 0
                             y_vel = 0
@@ -132,10 +140,8 @@ class ViconInterface():
                             yaw_rate = 0
                             
                         self.have_recv_packet = True
-
-                        # Store in public variable 
-                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, datetime.now()]
-
+                        # Store in public variable
+                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, data[0], data[1], data[2], data[3], data[4], data[5], datetime.now()]
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
             print(traceback.format_exc())
@@ -147,6 +153,7 @@ class ViconInterface():
             return self.tracked_object[name][0:6]
         except Exception as e:
             # full exception trace
+            # print(traceback.format_exc())
             return None
         
     def getVel(self, name):
