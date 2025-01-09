@@ -26,7 +26,7 @@ def micros():
 
 class ViconInterface():
 
-    def __init__(self, udp_ip="0.0.0.0", udp_port=51001):
+    def __init__(self, udp_ip="0.0.0.0", udp_port=51001, filter_frequency=50):
         # Port and IP to bind UDP listener
         self.udp_port = udp_port
         self.udp_ip = udp_ip
@@ -47,6 +47,8 @@ class ViconInterface():
 
         # Flag that the interface has heard from Vicon
         self.have_recv_packet = False
+
+        self.filter_frequency = filter_frequency
 
     # Ends main loop on closure
     def end(self):
@@ -104,18 +106,22 @@ class ViconInterface():
                                 yawdiff -= 2*math.pi
                             elif yawdiff < -math.pi:
                                 yawdiff += 2*math.pi
-                            yaw = ((2*self.tracked_object[name][5]) + yawdiff)/2
                             
-                            x_vel = (x - self.tracked_object[name][0])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
-                            y_vel = (y - self.tracked_object[name][1])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
-                            z_vel = (z - self.tracked_object[name][2])/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+                            dt = (datetime.now()-self.tracked_object[name][12]).total_seconds()
+                            tau = dt / (2 * math.pi * self.filter_frequency)
+                            alpha = dt / (tau + dt)
+                            yaw = self.tracked_object[name][5] + (alpha * yawdiff)
+
+                            x_vel = (x - self.tracked_object[name][0])/(dt)
+                            y_vel = (y - self.tracked_object[name][1])/(dt)
+                            z_vel = (z - self.tracked_object[name][2])/(dt)
 
                             x_vel = max(min(x_vel, 5), -5)
                             y_vel = max(min(y_vel, 5), -5)
 
-                            roll_rate = (((roll - self.tracked_object[name][3]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
-                            pitch_rate = (((pitch - self.tracked_object[name][4]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
-                            yaw_rate = (((data[5] - self.tracked_object[name][5]+math.pi)%(2*math.pi))-math.pi)/((datetime.now()-self.tracked_object[name][12]).total_seconds())
+                            roll_rate = (((roll - self.tracked_object[name][3]+math.pi)%(2*math.pi))-math.pi)/(dt)
+                            pitch_rate = (((pitch - self.tracked_object[name][4]+math.pi)%(2*math.pi))-math.pi)/(dt)
+                            yaw_rate = (((data[5] - self.tracked_object[name][5]+math.pi)%(2*math.pi))-math.pi)/(dt)
                         else:
                             yaw = data[5]
                             x_vel = 0
