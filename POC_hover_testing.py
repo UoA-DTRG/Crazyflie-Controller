@@ -52,15 +52,15 @@ Quit = namedtuple('Quit', [])
 
 # CONTROLLER SPECIFIC
 Kr = matrix = np.array([
-    [6.3245553203367, -3.71460521506104e-14, 5.11108714402045e-16],
-    [2.07066979941353e-14, 6.32455532033672, -1.26979268902311e-14],
-    [8.5425818137254e-13, 1.04372739110873e-13, 2.23606797749967]
+    [2.82842712474614, 8.59277630134135e-16, -1.53093285816141e-15],
+    [-1.06987176737004e-14, 2.82842712474617, -3.53307000610931e-15],
+    [7.06475321562567e-14, 9.49023056660199e-14, 0.999999999999982]
 ])
 
 Kx = np.array([
-    [8.63301250010549, 1.93917289406878, -5.85050733704574e-15, 8.81328351890345e-16, 8.77987827326485e-16, 2.02451075292509e-16],
-    [9.64572543908179e-15, 1.61787040256845e-15, 8.63301250010552, 1.93917289406879, -1.09746200366212e-14, -1.44717616093088e-15],
-    [1.15507033843275e-12, 2.51383503886885e-13, 7.48663030272806e-14, 2.61030339140661e-15, 1.87970255354079, 0.231047389827196]
+    [4.14323463619714, 1.26684401603437, 2.98404127093286e-15, 3.28370826039609e-15, -8.70061848963826e-16, -1.60350778158291e-17],
+    [-1.85216407858591e-14, -4.71009099890349e-15, 4.14323463619717, 1.26684401603438, -4.31894946775947e-15, 6.36012820696041e-17],
+    [7.49303973265758e-14, 4.56744316273816e-15, 6.49454453442858e-14, 1.01690244117881e-14, 0.956701770399453, 0.20763693774274]
 ])
 
 def control_thread():
@@ -106,6 +106,9 @@ def control_thread():
     try:
         time.sleep(0.1)
         offset = get_pos(vicon.getPos(OBJECT_NAME), current_pos)
+        pbody_offset = get_pos(vicon.getPos("PbodyCrazyFlie"), current_pos)
+        atlas_offset = get_pos(vicon.getPos("AtlasCrazyflie"), current_pos)
+
         print("Offset Pos & Rot: ",offset)
         
         waiting = True
@@ -213,9 +216,11 @@ def control_thread():
             controlQueues[0].put(Altitude(c_roll_1, c_pitch_1,  yaw, height))  # ATLAS RIGHT
             controlQueues[1].put(Altitude(c_roll_2, c_pitch_2, yaw, height))  # PBODY LEFT
             
-            atlas = vicon.getPos("AtlasCrazyflie") - offset
-            pbody = vicon.getPos("PbodyCrazyFlie") - offset
+            atlas = vicon.getPos("AtlasCrazyflie") - atlas_offset
+            pbody = vicon.getPos("PbodyCrazyFlie") - pbody_offset
             
+            atlasUF = vicon.getUF("AtlasCrazyflie") - atlas_offset
+            pbodyUF = vicon.getUF("PbodyCrazyFlie") - pbody_offset
 
             client.send({
                 OBJECT_NAME: {
@@ -234,18 +239,19 @@ def control_thread():
                     "setpoint": {"clamped roll": float(c_roll_1),"clamped pitch": float(c_pitch_1),"yaw": float(yaw)},
                     "position": {"x": float(atlas[0]),"y": float(atlas[1]), "z": float(atlas[2])},
                     "attitude": {"roll": math.degrees(float(atlas[3])),"pitch": math.degrees(float(atlas[4])),"yaw": math.degrees(float(atlas[5]))},
+                    "unfiltered": {"x": float(atlasUF[0]),"y": float(atlasUF[1]), "z": float(atlasUF[2]), "roll": math.degrees(float(atlasUF[3])),"pitch": math.degrees(float(atlasUF[4])),"yaw": math.degrees(float(atlasUF[5]))}
                 },
                 "P-BODY":{
                     "setpoint": {"clamped roll": float(c_roll_2),"clamped pitch": float(c_pitch_2),"yaw": float(yaw)},
                     "position": {"x": float(pbody[0]),"y": float(pbody[1]), "z": float(pbody[2])},
-                    "attitude": {"roll": math.degrees(float(pbody[3])),"pitch": math.degrees(float(pbody[4])),"yaw": math.degrees(float(pbody[5]))}
+                    "attitude": {"roll": math.degrees(float(pbody[3])),"pitch": math.degrees(float(pbody[4])),"yaw": math.degrees(float(pbody[5]))},
+                    "unfiltered": {"x": float(pbodyUF[0]),"y": float(pbodyUF[1]), "z": float(pbodyUF[2]), "roll": math.degrees(float(pbodyUF[3])),"pitch": math.degrees(float(pbodyUF[4])),"yaw": math.degrees(float(pbodyUF[5]))}
                 },
             })
         
         controlQueues[0].put(Land(3))
         controlQueues[1].put(Land(3))
 
-        
         # controlQueues[1].put(Land(3))
     except Exception as e:
         for ctrl in controlQueues:
