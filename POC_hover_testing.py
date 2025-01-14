@@ -40,7 +40,7 @@ uris = [
 ]
 
 reference = np.array([0, 0, 0])  # reference state
-height = 0.6
+height = 0.8
 
 #CONTROL QUEUE DEFINITIONS
 Takeoff = namedtuple('Takeoff', ['height', 'time'])
@@ -52,15 +52,15 @@ Quit = namedtuple('Quit', [])
 
 # CONTROLLER SPECIFIC
 Kr = matrix = np.array([
-    [2.82842712474614, 8.59277630134135e-16, -1.53093285816141e-15],
-    [-1.06987176737004e-14, 2.82842712474617, -3.53307000610931e-15],
-    [7.06475321562567e-14, 9.49023056660199e-14, 0.999999999999982]
+    [1.09544511501033, 1.36016126978046e-14, -9.75767735007051e-15],
+    [2.75622589439528e-15, 1.09544511501029, -5.6636511851359e-14],
+    [5.86112921741638e-15, -2.78272267634588e-14, 2.00000000000014]
 ])
 
 Kx = np.array([
-    [4.14323463619714, 1.26684401603437, 2.98404127093286e-15, 3.28370826039609e-15, -8.70061848963826e-16, -1.60350778158291e-17],
-    [-1.85216407858591e-14, -4.71009099890349e-15, 4.14323463619717, 1.26684401603438, -4.31894946775947e-15, 6.36012820696041e-17],
-    [7.49303973265758e-14, 4.56744316273816e-15, 6.49454453442858e-14, 1.01690244117881e-14, 0.956701770399453, 0.20763693774274]
+    [21.4793255440022, 64.522360771309, 1.91524565700855e-13, 4.0698479918769e-13, -3.95192434058514e-14, -5.38957167508448e-14],
+    [7.75551252183115e-15, 5.55903059633902e-14, 24.1115729550083, 64.5253388025287, -4.74408815699575e-13, -7.84699588061605e-13],
+    [-1.00601714715034e-13, -3.91355010105559e-13, -3.73652184809754e-13, -1.15421175892622e-12, 17.8525109479907, 29.6780345860254]
 ])
 
 def control_thread():
@@ -142,13 +142,16 @@ def control_thread():
 
         while flying:
                 
-                
             time.sleep(0.01) #
 
             # safety timeout
             elapsed_time = time.time() - start_time
+            if elapsed_time < 10: # time to stabilize
+                reference = np.array([0, 0, 0])
+            else:
+                reference = np.array([np.sin((1/90) * elapsed_time), (-1/2)*np.sin((2/90) * elapsed_time), 0]) 
 
-            if elapsed_time > 40:
+            if elapsed_time > 120:
                 print("Timeout reached. Exiting loop.")
                 break
             
@@ -188,7 +191,7 @@ def control_thread():
             rot_matrix = np.array([[np.cos(yaw), np.sin(yaw)],
                 [-np.sin(yaw), np.cos(yaw)]])
             
-            HT_thrusts = HT_thrusts @ rot_matrix
+            HT_thrusts = rot_matrix @ HT_thrusts
             bx_thrust = HT_thrusts[0]
             by_thrust = HT_thrusts[1]
             bx_1 = WEIGHTING * bx_thrust
@@ -293,8 +296,7 @@ def update_crazy_controller(scf):
             scf.cf.high_level_commander.stop()
             time.sleep(0.1)
 
-            print('Warning! unknown command {} for uri {}'.format(command,
-                                                                  cf.uri))
+            print('Warning! unknown command {} for uri {}'.format(command,cf.uri))
 
 def light_check(scf):
     def activate_led_bit_mask(scf):
@@ -369,12 +371,14 @@ if __name__ == '__main__':
         try:    
             swarm.parallel_safe(set_params)
             swarm.parallel_safe(light_check)
+            print('Light check done')
             swarm.reset_estimators()
+            print('Estimators reset')
             
             threading.Thread(target=control_thread).start()
-
+            print('Control thread started')
             swarm.parallel_safe(update_crazy_controller)
-            
+            print('Crazyflie threads started')
         except Exception as e:
             swarm.parallel_safe(stop)
             time.sleep(0.1)

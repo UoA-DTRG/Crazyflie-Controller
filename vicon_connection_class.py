@@ -55,10 +55,10 @@ class ViconInterface():
         self.run_interface = False
         self.sock.close()
 
-    def lpf(self, prev_filtered, prev_value, value, dt):
+    def lpf(self, prev_filtered, prev_value, value, dt, filter_freq):
 
-        alpha = (2 - dt * self.filter_frequency) / (2 + dt * self.filter_frequency)
-        beta = dt * self.filter_frequency / (2 + dt * self.filter_frequency)
+        alpha = (2 - dt * filter_freq) / (2 + dt * filter_freq)
+        beta = dt * filter_freq / (2 + dt * filter_freq)
         return alpha * prev_filtered + beta * (prev_value + value)
         
     def main_loop(self):
@@ -114,11 +114,11 @@ class ViconInterface():
                                 yaw_diff += 2*math.pi
                             dt = (datetime.now()-self.tracked_object[name][-1]).total_seconds()
                             unwrapped_yaw = self.tracked_object[name][17] + yaw_diff
-                            yaw = self.lpf(self.tracked_object[name][5], self.tracked_object[name][17], unwrapped_yaw, dt)
+                            yaw = self.lpf(self.tracked_object[name][5], self.tracked_object[name][17], unwrapped_yaw, dt, self.filter_frequency)
 
-                            x = self.lpf(self.tracked_object[name][0], self.tracked_object[name][12], x, dt)
-                            y = self.lpf(self.tracked_object[name][1], self.tracked_object[name][13], y, dt)
-                            z = self.lpf(self.tracked_object[name][2], self.tracked_object[name][14], z, dt)
+                            x = self.lpf(self.tracked_object[name][0], self.tracked_object[name][12], x, dt, self.filter_frequency)
+                            y = self.lpf(self.tracked_object[name][1], self.tracked_object[name][13], y, dt, self.filter_frequency)
+                            z = self.lpf(self.tracked_object[name][2], self.tracked_object[name][14], z, dt, self.filter_frequency)
 
                             x_vel = (x - self.tracked_object[name][0])/(dt)
                             y_vel = (y - self.tracked_object[name][1])/(dt)
@@ -129,10 +129,10 @@ class ViconInterface():
 
                             roll_rate = (((roll - self.tracked_object[name][3]+math.pi)%(2*math.pi))-math.pi)/(dt)
                             pitch_rate = (((pitch - self.tracked_object[name][4]+math.pi)%(2*math.pi))-math.pi)/(dt)
-                            yaw_rate = (yaw - self.tracked_object[name][5])/dt
+                            # yaw_rate = (yaw - self.tracked_object[name][5])/dt
                             
-                            # unfiltered_yawrate = (yaw - self.tracked_object[name][5])/dt
-                            # yaw_rate = self.lpf(self.tracked_object[name][11], self.tracked_object[name][18], yaw_rate, dt)
+                            unfiltered_yaw_rate = (yaw - self.tracked_object[name][5])/dt
+                            yaw_rate = self.lpf(self.tracked_object[name][11], self.tracked_object[name][18], unfiltered_yaw_rate, dt, self.filter_frequency)
                         else:
                             l = 2
                             yaw = data[5]
@@ -143,10 +143,11 @@ class ViconInterface():
                             roll_rate = 0
                             pitch_rate = 0
                             yaw_rate = 0
+                            unfiltered_yaw_rate = 0
                             
                         self.have_recv_packet = True
                         # Store in public variable
-                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, data[0]/1000, data[1]/1000, data[2]/1000, data[3], data[4], unwrapped_yaw, yaw_rate ,datetime.now()]
+                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, data[0]/1000, data[1]/1000, data[2]/1000, data[3], data[4], unwrapped_yaw, unfiltered_yaw_rate ,datetime.now()]
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
             print(traceback.format_exc())
@@ -158,7 +159,7 @@ class ViconInterface():
             return self.tracked_object[name][0:6]
         except Exception as e:
             # full exception trace
-            # print(traceback.format_exc())
+            print(traceback.format_exc())
             return None
         
     def getVel(self, name):
