@@ -52,16 +52,26 @@ Quit = namedtuple('Quit', [])
 
 # CONTROLLER SPECIFIC
 Kr = matrix = np.array([
-    [1.09544511501033, 1.36016126978046e-14, -9.75767735007051e-15],
-    [2.75622589439528e-15, 1.09544511501029, -5.6636511851359e-14],
-    [5.86112921741638e-15, -2.78272267634588e-14, 2.00000000000014]
+    [6.32455532033701, -1.92611708090559e-14, -2.51364697870046e-15],
+    [-5.11540256539333e-14, 5.99999999999965, 1.87222361954461e-14],
+    [-4.75035904976474e-15, -1.2170348703185e-12, 1.99999999999997]
 ])
 
 Kx = np.array([
-    [21.4793255440022, 64.522360771309, 1.91524565700855e-13, 4.0698479918769e-13, -3.95192434058514e-14, -5.38957167508448e-14],
-    [7.75551252183115e-15, 5.55903059633902e-14, 24.1115729550083, 64.5253388025287, -4.74408815699575e-13, -7.84699588061605e-13],
-    [-1.00601714715034e-13, -3.91355010105559e-13, -3.73652184809754e-13, -1.15421175892622e-12, 17.8525109479907, 29.6780345860254]
+    [26.6274133227985, 43.4037667564728, -7.76461230836858e-14, -1.52606537403102e-13, -3.10094451126148e-14, -7.2568445419908e-14],
+    [1.9122942608089e-14, 7.80944765291056e-14, 26.9778082342948, 45.6501707938696, 9.5871237349572e-14, 1.54384453940806e-13],
+    [-2.2128302669098e-13, -3.22789743035866e-13, -5.46392521542712e-12, -9.16730358643293e-12, 13.563245018237, 20.9904016551837]
 ])
+# eg. figure_eight(2, 1, 45 ...) = 2m width, 1m height, 45s total time
+def figure_eight(width, height, total_time, time, time_offset = 0, horizontal = True):
+    if horizontal:
+        width_freq_modifier = 1
+        height_freq_modifier = 2
+    else:
+        width_freq_modifier = 2
+        height_freq_modifier = 1
+    reference = np.array([0.5 * width * np.sin((2 * np.pi * width_freq_modifier/total_time) * (time - time_offset)), - 0.5 * height * np.sin((2 * np.pi * height_freq_modifier/total_time) * (time - time_offset)), 0]) 
+    return reference
 
 def control_thread():
     vicon = vi()
@@ -146,10 +156,11 @@ def control_thread():
 
             # safety timeout
             elapsed_time = time.time() - start_time
-            if elapsed_time < 10: # time to stabilize
+            time_offset = 10
+            if elapsed_time < time_offset: # time to stabilize
                 reference = np.array([0, 0, 0])
             else:
-                reference = np.array([np.sin((1/90) * elapsed_time), (-1/2)*np.sin((2/90) * elapsed_time), 0]) 
+                reference = figure_eight(3, 2, 100, elapsed_time, time_offset) # eg. figure_eight(2, 1, 45 ...) = 2m width, 1m height, 45s total time
 
             if elapsed_time > 120:
                 print("Timeout reached. Exiting loop.")
@@ -177,7 +188,7 @@ def control_thread():
             
             
             y_tracker += (Kr @ (reference - Cx))*d_time
-            y_tracker = np.clip(y_tracker, -10, 10)
+            # y_tracker = np.clip(y_tracker, -30, 30)
             #  Try without reference tracking first!
             stateReg = -Kx @ x
             u = stateReg + y_tracker
@@ -233,6 +244,7 @@ def control_thread():
                     "velocityR": {"roll": math.degrees(float(current_vel[3])),"pitch": math.degrees(float(current_vel[4])),"yaw": math.degrees(float(current_vel[5]))},
                 },
                 "CONTROLLER":{
+                    "reference": {"x": float(reference[0]),"y": float(reference[1]), "yaw": math.degrees(float(reference[2]))},
                     "wrench": {"x": float(u[0]), "y": float(u[1]), "moment z": float(u[2])},
                     "Rotated Thrusts": {"x" : float(HT_thrusts[0]), "y": float(HT_thrusts[1])},
                     "Queue Size": {"Atlas": controlQueues[0].qsize() , "P-Body":controlQueues[1].qsize() },
