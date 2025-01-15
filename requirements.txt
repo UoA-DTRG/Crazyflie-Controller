@@ -4,7 +4,6 @@ backcall==0.2.0
 beautifulsoup4==4.12.3
 bleach==6.1.0
 certifi==2024.7.4
--e git+https://github.com/JaapSkinner/crazyflie-lib-python.git@ebf458f51eeba33113e653efdedf0c8ff0e7b110#egg=cflib&subdirectory=../../cflib
 charset-normalizer==3.3.2
 contourpy==1.3.0
 control==0.10.1
