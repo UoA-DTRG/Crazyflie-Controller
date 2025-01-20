@@ -7,6 +7,7 @@ from datetime import datetime as dt
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from udp_client import UDP_Client
+import traceback
 
 vicon = vi()
 try:
@@ -54,7 +55,8 @@ try:
 except KeyboardInterrupt:
     pass
 except Exception as e:
-    print(e)
+    print(traceback.format_exc())
 finally:
+    print("finished")
     vicon.end()
 

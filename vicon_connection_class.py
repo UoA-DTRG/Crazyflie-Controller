@@ -41,6 +41,8 @@ class ViconInterface():
 
         # Array of dictionaries to store the tracked objects being recieved
         self.tracked_object = {}
+        self.tracked_object['test'] = []
+        self.tracked_object['error'] = []
 
         # Flag to end the main loop
         self.run_interface = True
@@ -63,9 +65,13 @@ class ViconInterface():
         
     def main_loop(self):
         try:
+            self.tracked_object["test"].append("test")
             while self.run_interface:
                 # Block until there is a packet
+                self.tracked_object['test'].append("here b")
                 b, addr = self.sock.recvfrom(512)
+                self.tracked_object['test'].append("here a")
+                self.tracked_object["test"].append(b)
 
                 # First 5 bytes are the frame # and # of items in frame
                 FrameNumber = int.from_bytes(b[0:4], byteorder='little')
@@ -147,10 +153,11 @@ class ViconInterface():
                             
                         self.have_recv_packet = True
                         # Store in public variable
-                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, data[0]/1000, data[1]/1000, data[2]/1000, data[3], data[4], unwrapped_yaw, unfiltered_yaw_rate ,datetime.now()]
+                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, data[0]/1000, data[1]/1000, data[2]/1000, data[3], data[4], unwrapped_yaw, unfiltered_yaw_rate, b, datetime.now()]
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
             print(traceback.format_exc())
+            self.tracked_object['error'].append(traceback.format_exc())
         finally:
             self.sock.close()
         
