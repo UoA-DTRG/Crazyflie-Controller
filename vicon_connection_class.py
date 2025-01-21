@@ -153,7 +153,7 @@ class ViconInterface():
                             
                         self.have_recv_packet = True
                         # Store in public variable
-                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, data[0]/1000, data[1]/1000, data[2]/1000, data[3], data[4], unwrapped_yaw, unfiltered_yaw_rate, b, datetime.now()]
+                        self.tracked_object[name] = [x, y, z, roll, pitch, yaw, x_vel, y_vel, z_vel, roll_rate, pitch_rate, yaw_rate, data[0]/1000, data[1]/1000, data[2]/1000, data[3], data[4], unwrapped_yaw, unfiltered_yaw_rate, datetime.now()]
                         #print("p{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}".format(ned_x, ned_y, ned_z, ned_roll, ned_pitch, ned_yaw))
         except Exception as e:
             print(traceback.format_exc())
@@ -161,12 +161,20 @@ class ViconInterface():
         finally:
             self.sock.close()
         
+    def getObjectsData(self):
+        try:
+            return self.tracked_object
+        except Exception as e:
+            # full exception trace
+            print(traceback.format_exc())
+            return None 
+
     def getPos(self, name):
         try:
             return self.tracked_object[name][0:6]
         except Exception as e:
             # full exception trace
-            print(traceback.format_exc())
+            # print(traceback.format_exc())
             return None
         
     def getVel(self, name):

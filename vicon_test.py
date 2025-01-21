@@ -18,14 +18,17 @@ try:
     client = UDP_Client()
     print("running")
     while True:
-        atlas = vicon.getPos("AtlasCrazyflie")
+        atlas = vicon.getPos("AtlasCrazyflie") # 'AtlasCrazyflie', 'CrazyfliePayload', 'PbodyCrazyFlie'
         # print(f'atlas = {atlas}')
         pbody = vicon.getPos("PbodyCrazyFlie")
         # print(f'pbody = {pbody}')
         current_pos = vicon.getPos("CrazyfliePayload")
-        pbodyV = vicon.getVel("PbodyCrazyFlie")
+        to = vicon.getObjectsData()
+        # pbodyV = vicon.getVel("PbodyCrazyFlie")
         # print(f'payload = {current_pos}')
         if atlas and pbody and current_pos:
+            # print("data")
+            # print(to)
             client.send({
                     "Payload": {
                         "position": {"x": float(current_pos[0]),"y": float(current_pos[1]), "z": float(current_pos[2])},
@@ -37,14 +40,14 @@ try:
                     },
                     "P-BODY":{
                         "position": {"x": float(pbody[0]),"y": float(pbody[1]), "z": float(pbody[2])},
-                        "velocity": {"x": float(pbodyV[0]),"y": float(pbodyV[1]), "z": float(pbodyV[2])},
+                        # "velocity": {"x": float(pbodyV[0]),"y": float(pbodyV[1]), "z": float(pbodyV[2])},
                         "attitude": {"roll": math.degrees(float(pbody[3])),"pitch": math.degrees(float(pbody[4])),"yaw": math.degrees(float(pbody[5]))},
-                        "attitude rate": {"roll": math.degrees(float(pbodyV[3])),"pitch": math.degrees(float(pbodyV[4])),"yaw": math.degrees(float(pbodyV[5]))}
+                        # "attitude rate": {"roll": math.degrees(float(pbodyV[3])),"pitch": math.degrees(float(pbodyV[4])),"yaw": math.degrees(float(pbodyV[5]))}
                     },
                 })
             # print("------------------------------------------- SUCCESS -------------------------------------------")
         # else:
-            # print("No data")
+        #     print("No data")
             # print("atlas")
             # print(atlas)
             # print("pbody")
