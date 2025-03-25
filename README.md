@@ -11,6 +11,8 @@ This project aims to control two Crazyflie drones using a computer via the Pytho
 -   Python 3.11.9 (virtual environment included)
 -   Crazyflie Python API (install instructions [here](https://github.com/bitcraze/crazyflie-lib-python))
 
+-   Use of the Dual controller requires customised crazyflie firmware and library found at UoA-DTRG/crazyflie-lib and crazyflie-firmware
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
